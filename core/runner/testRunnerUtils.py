@@ -21,5 +21,5 @@ def testmodel(model, loader, loggers, test_freq, testset_name):
         loggers.update_error(output, it % test_freq == 0 or it == len(loader) - 1)
         all_error += output['error']
         n_count += output['n_count']
-    print('testing one dataset : DONE', all_error / n_count)
+    #print('testing one dataset : DONE', all_error / n_count)
     return all_error / n_count, 1.

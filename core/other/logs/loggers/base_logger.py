@@ -24,7 +24,7 @@ class baselogger():
         for key, value in info.items():
             if keyword in key:
                 if info_type == 'error' and keyword == 'error' and 'n_count' in info.keys():
-                    value /= info['n_count']  # mean of this iteration
+                    value = float(value) / info['n_count']  # mean of this iteration
                 nowstr = '%s:%.3f' % (key, value)
                 # print(key, keyword, keyword in key, div_name)
                 if output_saved:
@@ -80,10 +80,10 @@ class baselogger():
         self._update_normal(info, shouldprint, 'loss')
         if shouldprint:
             self.info['loss'].clear()
-            print('from loss: clean up')
+            #print('from loss: clean up')
 
     def update_error(self, info: dict, shouldprint: bool):
         self._update_normal(info, shouldprint, 'error')
         if info.get('flush', False):
             self.info['error'].clear()
-            print('from error: clean up')
+            #print('from error: clean up')

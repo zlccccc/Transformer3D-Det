@@ -6,6 +6,8 @@ import torch
 
 
 def create_logger(name, log_file, level=logging.INFO):
+    print('create_lgoger: ', log_file)
+    ensure_sub_dir(log_file)
     logger = logging.getLogger(name)
     logger.propagate = False
     formatter = logging.Formatter('[%(asctime)s][%(filename)15s][line:%(lineno)4d][%(levelname)4s] %(message)s')

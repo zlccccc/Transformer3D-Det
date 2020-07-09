@@ -2,12 +2,12 @@ common:
     model:
         name: pointnet++
         normal_channel: False
-        num_output: 100
+        num_output: 40
         base_lr: 0.001
-        weight_decay: 0.0005
+        weight_decay: 0.0001
     logs:
         baselogger:
-            path: log.txt
+            path: log/log.txt
         #tensorboard:
         #    path: log
     snapshot:
@@ -17,8 +17,8 @@ common:
         path: ./ckpt_best.pth.tar
         type: recover
 train:
-    batch_size: 6
-    workers: 0
+    batch_size: 24
+    workers: 6
     dataset:
         name: ModelNetDataset
         split: train
@@ -29,8 +29,8 @@ train:
         weight_decay: 0.0005
     lr_scheduler:
         type: STEP
-        milestones: [200000, 400000, 600000, 800000] #epoch_allcards
-        lr_mults: [0.5, 0.5, 0.5, 0.5]
+        milestones: [20000, 40000, 60000] #epoch_allcards
+        lr_mults: [0.5, 0.5, 0.5]
         base_lr: 0.001
         warmup_lr: 0
         warmup_steps: 0
@@ -39,15 +39,15 @@ train:
         rotate: [15, 15, 15]
     runner:
         name: iteration
-        max_iter: 1000000
+        max_iter: 80000
         # test and save
-        test_freq: 10000
-        save_freq: 20000
+        test_freq: 1000
+        save_freq: 10000
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 6
-    workers: 0
+    batch_size: 24
+    workers: 6
     dataset:
         testset:
             name: ModelNetDataset
