@@ -26,17 +26,15 @@ train:
         npoint: 1024
     optimizer:
         name: Adam
-        weight_decay: 0.0005
+        betas: [0.9, 0.999]
+        eps: 0.00000001
+        weight_decay: 0.0001
     lr_scheduler:
-        type: STEP
-        milestones: [20000, 40000, 60000] #epoch_allcards
-        lr_mults: [0.5, 0.5, 0.5]
+        type: lr_scheduler_step
+        step_size: 8000
+        gamma: 0.7
         base_lr: 0.001
-        warmup_lr: 0
-        warmup_steps: 0
-    transform:
-        Normalize: True
-        rotate: [15, 15, 15]
+    transform: None # TODO
     runner:
         name: iteration
         max_iter: 80000

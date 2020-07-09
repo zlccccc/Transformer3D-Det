@@ -1,13 +1,11 @@
 common:
     model:
-        name: pointnet++
+        name: pointnetInitial
         normal_channel: False
         num_output: 5
-        base_lr: 0.001
-        weight_decay: 0.0005
     logs:
         baselogger:
-            path: log.txt
+            path: log/log.txt
         #tensorboard:
         #    path: log
     snapshot:
@@ -25,17 +23,15 @@ train:
         npoint: 1024
     optimizer:
         name: Adam
-        weight_decay: 0.0005
+        betas: [0.9, 0.999]
+        eps: 0.00000001
+        weight_decay: 0.0001
     lr_scheduler:
-        type: STEP
-        milestones: [200000, 400000, 600000, 800000] #epoch_allcards
-        lr_mults: [0.5, 0.5, 0.5, 0.5]
+        type: lr_scheduler_step
+        step_size: 8000
+        gamma: 0.7
         base_lr: 0.001
-        warmup_lr: 0
-        warmup_steps: 0
-    transform:
-        Normalize: True
-        rotate: [15, 15, 15]
+    transform: None # TODO
     runner:
         name: iteration
         max_iter: 1000000
