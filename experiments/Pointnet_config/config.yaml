@@ -1,0 +1,56 @@
+common:
+    model:
+        name: pointnet++
+        normal_channel: False
+        num_output: 100
+        base_lr: 0.001
+        weight_decay: 0.0005
+    logs:
+        baselogger:
+            path: log.txt
+        #tensorboard:
+        #    path: log
+    snapshot:
+        save_path: snapshot
+    load:
+        load: False
+        path: ./ckpt_best.pth.tar
+        type: recover
+train:
+    batch_size: 6
+    workers: 0
+    dataset:
+        name: ModelNetDataset
+        split: train
+        root: /data1/zhaolichen/data/modelnet40_normal_resampled
+        npoint: 1024
+    optimizer:
+        name: Adam
+        weight_decay: 0.0005
+    lr_scheduler:
+        type: STEP
+        milestones: [200000, 400000, 600000, 800000] #epoch_allcards
+        lr_mults: [0.5, 0.5, 0.5, 0.5]
+        base_lr: 0.001
+        warmup_lr: 0
+        warmup_steps: 0
+    transform:
+        Normalize: True
+        rotate: [15, 15, 15]
+    runner:
+        name: iteration
+        max_iter: 1000000
+        # test and save
+        test_freq: 10000
+        save_freq: 20000
+        log_freq: 10
+        snapshot_save_path: snapshot
+test:
+    batch_size: 6
+    workers: 0
+    dataset:
+        testset:
+            name: ModelNetDataset
+            split: test
+            root: /data1/zhaolichen/data/modelnet40_normal_resampled
+            npoint: 1024

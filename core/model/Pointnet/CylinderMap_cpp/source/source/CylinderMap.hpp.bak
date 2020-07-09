@@ -1,0 +1,75 @@
+#ifndef _CylinderMap_HPP
+#define _CylinderMap_HPP
+
+#include <cstdio>
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#define M_PI    3.14159265358979323846
+
+namespace CylinderMap {
+    int width, height; //const value; should init before ask
+    float Ymin, Ystep, Astep, Rmax, Zbias;
+
+    void init(int Adiv, unsigned Ydiv) {
+        width = Adiv;
+        height = Ydiv;
+        float Amax = M_PI;
+        Rmax = 3.6;
+        Ystep = 3 / static_cast<float>(Ydiv);
+        Astep = Amax * 2 / static_cast<float>(Adiv - 1);
+        Zbias = 0.0;
+    }
+
+    int Point2Index(const float v[3]) {//TODO:+0.5? maybe wrong?
+        int y = static_cast<int>(v[1] / Ystep + static_cast<float>(height) / 2),
+            a = static_cast<int>((atan2(v[0], v[2]-Zbias) / Astep + static_cast<float>(width) / 2));
+        if (y < 0 || a < 0 || y >= height || a >= width)
+            return -1;
+        return a + y * width;
+    }
+
+    bool Index2Point(float* depth_map, unsigned idx, float v[3], float bias) { //now not useful
+        v[0] = ((idx % width) - static_cast<float>(width / 2.)) * Astep;
+        v[1] = ((idx / width) - static_cast<float>(height / 2.)) * Ystep;
+        v[2] = (depth_map[idx] - bias) * cos(v[0]);
+        v[0] = (depth_map[idx] - bias) * sin(v[0]);
+        return true;
+    }
+
+    bool getUVMap(const float *clds, const float *feature_cld, int n, float *depth_map, float *feature_map, const int dim, int *ids, bool spread=true) { //for every point and put it in
+        bool ret=0;
+        int *weight = (int*)malloc(width * height * sizeof(int));
+        std::memset(weight, 0, n*sizeof(int));
+        for (int i = 0; i < n; i++, clds += 3, feature_cld += dim) {
+            float r = std::sqrt(clds[0] * clds[0] + clds[2] * clds[2]);
+            if (r > Rmax) {
+                printf("warning: point %d out of range(too far from middle); (%f, %f, %f) dist=%f\n", i, clds[0], clds[1], clds[2], std::sqrt(clds[0] * clds[0] + clds[2] * clds[2]));
+                ret = 1;
+                continue;
+            }
+            int u = Point2Index(clds);
+            if (u < 0) {
+                printf("warning: cannot find point %d; (%f, %f, %f)\n", i, clds[0], clds[1], clds[2]);
+                ret = 1;
+                continue;
+            }
+            ids[i*2] = u / width;
+            ids[i*2+1] = u % width;
+            depth_map[u] = std::max(depth_map[u], r);
+            weight[u] ++;
+            for (int k = 0; k < dim; k++)
+                feature_map[u * dim + k] += feature_cld[k];
+        }
+        for (int i =0; i < width * height; i++)
+            if (weight[i])
+                for (int k = 0; k < dim; k++)
+                    feature_map[i * dim + k] /= weight[i];
+        if (spread)
+           
+        free(weight);
+        return ret;
+    }
+    // remove uvmap_to_point_cloud(with_face)_codes
+}
+#endif //_CylinderMap_HPP z
