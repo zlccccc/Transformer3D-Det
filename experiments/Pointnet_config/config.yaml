@@ -1,7 +1,7 @@
 common:
     model:
         name: pointnet++
-        normal_channel: False
+        normal_channel: True
         num_output: 40
         base_lr: 0.001
         weight_decay: 0.0001

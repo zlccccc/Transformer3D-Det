@@ -36,14 +36,15 @@ class PointnetPlusInitial(cls_module):
         return {'value': x}
 
     def _before_forward(self, input):
-        points = input['point_set'].cpu().data.numpy()
-        points = provider.random_point_dropout(points)
-        points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
-        points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
-        points = torch.from_numpy(points)
-        if input['point_set'].is_cuda:
-            points = points.cuda()
-        input['point_set'] = points
+        if self.type == 'train':
+            points = input['point_set'].cpu().data.numpy()
+            points = provider.random_point_dropout(points)
+            points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
+            points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
+            points = torch.from_numpy(points)
+            if input['point_set'].is_cuda:
+                points = points.cuda()
+            input['point_set'] = points
         return input
 
 

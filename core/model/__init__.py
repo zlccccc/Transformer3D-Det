@@ -2,6 +2,7 @@ import torch.nn as nn
 
 from .Pointnet.PointnetPlus import PointnetPlus
 from .PointnetYanx27.PointnetPlus import PointnetPlusInitial
+from .PointnetYanx27.PointnetSSG import PointnetPlusSSGInitial
 
 
 def model_entry(config):
@@ -16,5 +17,7 @@ def model_entry(config):
     if name == 'pointnetInitial':
         print(config.keys())
         return PointnetPlusInitial(config)
-
+    if name == 'pointnetSSGInitial':
+        print(config.keys())
+        return PointnetPlusSSGInitial(config)
     raise NotImplementedError('Model Arch {} Not Implemented'.format(name))
