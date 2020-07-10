@@ -13,20 +13,29 @@ def iterRunner(info):
     model = info['model']
     loggers = info['loggers']
     lowest_error = info['lowest_error']
+    last_iter = info['last_iter']
     t_start = time.time()
     T_START = time.time()
     if torch.cuda.is_available:
         print('use cuda(gpu)')
         model = model.cuda()
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if torch.is_tensor(v):
+                    state[k] = v.cuda()
     model.train_mode()  # change mode
-    for iter_id in range(config.max_iter):
+    print('last_iter:', last_iter)
+    for iter_id in range(last_iter+1, config.max_iter):
         for tries in range(100):
             try:
                 input = next(train_loader_iter)
                 break
             except Exception as e:
-                print('dataloader exception', str(e))
-                print(traceback.format_exc())
+                if isinstance(e, StopIteration):
+                    print('Start A New Epoch')
+                else:
+                    print('dataloader exception', str(e))
+                    print(traceback.format_exc())
                 train_loader_iter = iter(info['traindataloader'])
         if next(model.parameters()).is_cuda:
             for key in input.keys():
@@ -39,17 +48,18 @@ def iterRunner(info):
         t_forward = time.time()
         assert 'loss' in output.keys(), 'Key "loss" should in output.keys'
         loss = output['loss']
+        optimizer.zero_grad()
         loss.backward()
         # model.average_gradients()  # multi card sync
         optimizer.step()
         # print('backward okay') # for test
-        output['iteration'] = [iter_id, config.max_iter]
+        output['iteration'] = [iter_id, config.max_iter, (iter_id + 1) / len(info['traindataloader'])]
         output['loader_time'] = t_loader - t_start
         output['forward_time'] = t_forward - t_loader
         t_tmp = time.time()
         output['update_time'] = t_tmp - t_forward
         output['time'] = t_tmp - t_start
-        output['mean_time_iter'] = (t_tmp - T_START) / (iter_id + 1)
+        output['mean_time_iter'] = (t_tmp - T_START) / (iter_id - last_iter)
         t_start = t_tmp
         if iter_id % config.test_freq == 0 or iter_id % config.save_freq == 0:
             model.val_mode()
@@ -67,6 +77,7 @@ def iterRunner(info):
             output_error['time'] = test_time
             output_error['test_time'] = test_time
             output_error['error'] = error_final
+            output_error['prev_lowest_error'] = lowest_error
             output_error['flush'] = True
             output_error['n_count'] = 1
             loggers.update_error(output_error, True)  # similiar as model.val

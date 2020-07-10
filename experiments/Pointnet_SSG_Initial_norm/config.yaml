@@ -3,8 +3,6 @@ common:
         name: pointnetSSGInitial
         normal_channel: True
         num_output: 40
-        base_lr: 0.001
-        weight_decay: 0.0001
     logs:
         baselogger:
             path: log/log.txt
@@ -13,8 +11,8 @@ common:
     snapshot:
         save_path: snapshot
     load:
-        load: True
-        path: ./ckpt_best_model.pth.tar
+        load: False
+        path: ./ckpt_best.pth.tar
         type: recover
 train:
     batch_size: 24
@@ -24,6 +22,7 @@ train:
         split: train
         root: /data1/zhaolichen/data/modelnet40_normal_resampled
         npoint: 1024
+        normal_channel: True
     optimizer:
         name: Adam
         betas: [0.9, 0.999]
@@ -52,3 +51,4 @@ test:
             split: test
             root: /data1/zhaolichen/data/modelnet40_normal_resampled
             npoint: 1024
+            normal_channel: True

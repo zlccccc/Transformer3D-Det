@@ -36,7 +36,7 @@ class PointnetPlusInitial(cls_module):
         return {'value': x}
 
     def _before_forward(self, input):
-        if self.type == 'train':
+        if self.mode == 'train':
             points = input['point_set'].cpu().data.numpy()
             points = provider.random_point_dropout(points)
             points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])

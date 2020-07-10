@@ -44,7 +44,7 @@ class PointnetPlusSSGInitial(cls_module):
         return {'value': self.__forward(xyz)}
 
     def _before_forward(self, input):
-        if self.type == 'train':
+        if self.mode == 'train':
             points = input['point_set'].cpu().data.numpy()
             points = provider.random_point_dropout(points)
             points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
@@ -53,6 +53,7 @@ class PointnetPlusSSGInitial(cls_module):
             if input['point_set'].is_cuda:
                 points = points.cuda()
             input['point_set'] = points
+            # print('before forwrad')
         return input
 
 

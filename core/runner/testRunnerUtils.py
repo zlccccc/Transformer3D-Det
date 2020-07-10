@@ -15,7 +15,7 @@ def testmodel(model, loader, loggers, test_freq, testset_name):
         output = model(sample)
         if it == 0:
             output['testset_name_out'] = testset_name
-        output['iteration'] = [it + 1, len(loader)]
+        output['iteration'] = [it + 1, len(loader), (it + 1) / len(loader)]
         if it == len(loader) - 1:  # TODO: 再改
             output['flush'] = True
         loggers.update_error(output, it % test_freq == 0 or it == len(loader) - 1)

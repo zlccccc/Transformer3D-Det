@@ -28,7 +28,7 @@ def save_checkpoint(state, is_best, filename):
         shutil.copyfile(filename + '.pth.tar', 'ckpt_best_model.pth.tar')
 
 
-def load_state(path, model, map_location='cpu', optimizer=None):
+def load_state(path, model, map_location='cpu', optimizer=None): # directly to gpu
     if os.path.isfile(path):
         print("=> loading checkpoint '{}'".format(path))
         checkpoint = torch.load(path, map_location=map_location)
@@ -49,6 +49,8 @@ def load_state(path, model, map_location='cpu', optimizer=None):
             print("=> also loaded optimizer from checkpoint '{}' (step {})".format(path, step))
 
         return lowest_error, step
+    else:
+        raise FileNotFoundError(path)
 
 
 def ensure_dir(path):

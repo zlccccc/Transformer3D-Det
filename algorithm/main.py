@@ -48,13 +48,16 @@ def main():
         print('load model from %s' % load_path)
         if not os.path.exists(load_path):
             raise AssertionError('load_path not exist')
-        if config.get('recover', False):
+        load_way = config.common.load.get('type', 'recover')
+        if load_way == 'recover':
             print('Resume training from a previous checkpoint ...')
             lowest_err, last_iter = load_state(
                 load_path, model, optimizer=optimizer)
-        else:
+        elif load_way == 'finetune':
             print('Finetuning from a previous model ...')
             load_state(load_path, model)
+        else:
+            raise NotImplementedError('load_way: %s' % load_way)
     else:
         print('Start new training')
     config.train.lr_scheduler['optimizer'] = optimizer
@@ -77,6 +80,7 @@ def main():
         'lowest_error': lowest_err,
         'loggers': loggers,
         'model': model,
+        'last_iter': last_iter,
     }
     runner = getrunner(config.train.runner)
     runner(info)

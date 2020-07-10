@@ -30,7 +30,7 @@ class baselogger():
                 if output_saved:
                     assert div_name in self.info[info_type].keys(), 'output_saved(%s) should in info[info_type]' % div_name
                     if self.info[info_type][div_name] != 1:
-                        nowstr += '(mean=%.2f)' % (self.info[info_type][key] / self.info[info_type][div_name])
+                        nowstr += '(mean=%.3f)' % (self.info[info_type][key] / self.info[info_type][div_name])
                 if keyword == key:
                     ALL_VAL = nowstr
                 else:
@@ -68,7 +68,7 @@ class baselogger():
             output = [pinfo]
             # iteration
             if 'iteration' in info.keys():
-                nowstr = 'Iter: %d/%d' % (info['iteration'][0], info['iteration'][1])
+                nowstr = 'Iter: %d/%d(epoch%.2f)' % (info['iteration'][0], info['iteration'][1], info['iteration'][2])
                 output.append(nowstr)
             output.append(self._get_string_value(info, 'time', True, 'log_n_count', pinfo))
             output.append(self._get_string_value(info, 'loss', True, 'log_n_count', 'loss'))
