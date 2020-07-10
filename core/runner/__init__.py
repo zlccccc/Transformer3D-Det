@@ -1,4 +1,5 @@
 from .iterRunner import iterRunner
+from .testRunner import testRunner
 
 
 def getrunner(config):
@@ -6,5 +7,7 @@ def getrunner(config):
     print('using runner %s' % name)
     if name == 'iteration':
         return iterRunner
+    elif name == 'test':
+        return testRunner
     else:
         raise NotImplementedError(name)

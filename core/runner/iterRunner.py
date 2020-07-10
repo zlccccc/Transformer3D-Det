@@ -1,5 +1,5 @@
 from core.utils.utils import save_checkpoint
-from .testRunnerUtils import testmodel
+from .runner.testRunnerUtils import testmodel
 import torch
 import time
 import traceback
@@ -25,7 +25,7 @@ def iterRunner(info):
                     state[k] = v.cuda()
     model.train_mode()  # change mode
     print('last_iter:', last_iter)
-    for iter_id in range(last_iter+1, config.max_iter):
+    for iter_id in range(last_iter + 1, config.max_iter):
         for tries in range(100):
             try:
                 input = next(train_loader_iter)

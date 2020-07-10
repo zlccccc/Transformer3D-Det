@@ -17,9 +17,10 @@ from core.model import model_entry
 from core.data import get_dataset, get_one_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch training script')
-parser.add_argument('--config', default='None', type=str)
-parser.add_argument('--opt', default='None', type=str)
-parser.add_argument('--gpu', default='0', type=str)
+parser.add_argument('--config', default='None', type=str, help='config yaml path')
+parser.add_argument('--test', action='store_true', default=False, help='use testset to test model')
+parser.add_argument('--opt', default='None', type=str, help='other option')
+parser.add_argument('--gpu', default='0', type=str, help='gpu device')
 
 
 def main():
@@ -82,6 +83,8 @@ def main():
         'model': model,
         'last_iter': last_iter,
     }
+    if args.test:
+        config.train.runner.name = 'test'
     runner = getrunner(config.train.runner)
     runner(info)
 
