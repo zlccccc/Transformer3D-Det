@@ -1,5 +1,5 @@
 from core.utils.utils import save_checkpoint
-from .runner.testRunnerUtils import testmodel
+from .runner_utils.testRunnerUtils import testmodel
 import torch
 import time
 import traceback
@@ -41,4 +41,4 @@ def testRunner(info):
     output_error['flush'] = True
     output_error['n_count'] = 1
     loggers.update_error(output_error, True)  # similiar as model.val
-    print('training: done')
+    print('testing: done')

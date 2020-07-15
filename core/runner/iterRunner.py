@@ -1,5 +1,5 @@
 from core.utils.utils import save_checkpoint
-from .runner.testRunnerUtils import testmodel
+from .runner_utils.testRunnerUtils import testmodel
 import torch
 import time
 import traceback
@@ -25,7 +25,7 @@ def iterRunner(info):
                     state[k] = v.cuda()
     model.train_mode()  # change mode
     print('last_iter:', last_iter)
-    for iter_id in range(last_iter + 1, config.max_iter):
+    for iter_id in range(last_iter + 1, config.max_iter + 1):
         for tries in range(100):
             try:
                 input = next(train_loader_iter)
@@ -85,12 +85,12 @@ def iterRunner(info):
             if is_best or iter_id % config.save_freq == 0:
                 if is_best:
                     lowest_error = error_final
-                    save_checkpoint({
-                        'step': iter_id,
-                        'state_dict': model.state_dict(),
-                        'lowest_error': lowest_error,
-                        'optimizer': optimizer.state_dict(),
-                    }, is_best, config.snapshot_save_path + '/ckpt' + '_' + str(iter_id))
+                save_checkpoint({
+                    'step': iter_id,
+                    'state_dict': model.state_dict(),
+                    'lowest_error': lowest_error,
+                    'optimizer': optimizer.state_dict(),
+                }, is_best, config.snapshot_save_path + '/ckpt' + '_' + str(iter_id))
             model.train_mode()
         lr_scheduler.step()
         loggers.update_loss(output, iter_id % config.log_freq == 0)  # TODO

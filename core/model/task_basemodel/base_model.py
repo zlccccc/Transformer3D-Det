@@ -31,9 +31,13 @@ class base_module(nn.Module):
     def _before_forward(self, input):
         return input
 
+    def _after_forward(self, input):
+        return input
+
     def forward(self, input):
         input = self._before_forward(input)
         output = self._forward(input)
+        input = self._after_forward(input)
         if self.mode == 'train':
             return self.calculate_loss(input, output)
         elif self.mode == 'test':

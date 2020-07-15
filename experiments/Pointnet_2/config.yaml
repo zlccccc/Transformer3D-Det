@@ -1,6 +1,6 @@
 common:
     model:
-        name: pointnet++
+        name: pointnet++2
         normal_channel: True
         num_output: 40
         base_lr: 0.001
@@ -13,7 +13,7 @@ common:
     snapshot:
         save_path: snapshot
     load:
-        load: True
+        load: False
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:

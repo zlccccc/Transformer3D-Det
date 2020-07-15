@@ -88,6 +88,9 @@ class ModelNetDataset(Dataset):
                 self.cache[index] = (point_set, cls)
         # point_set = torch.from_numpy(point_set).float()
         sample = {}
+        relativepath = '/'.join(self.datapath[index][1].split('/')[4:])
+        #print('path', self.datapath[index][0], self.datapath[index][1].split('/'), relativepath)
+        sample['relativepath'] = relativepath
         sample['point_set'] = torch.from_numpy(point_set).float()
         sample['cls'] = torch.from_numpy(cls).long()
         return sample
