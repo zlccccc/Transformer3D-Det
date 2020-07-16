@@ -16,10 +16,11 @@ class cls_plane_module(cls_module):
         out = out / norm
         # print(point.shape, torch.ones(point.shape[0], point.shape[1], 1).cuda())
         point_mult = torch.cat([point[:, :, :3], torch.ones(point.shape[0], point.shape[1], 1).cuda()], dim=2)
+        # print(point_mult.shape, out.shape)
         leng = torch.bmm(point_mult, out.permute(0, 2, 1))
         distance = torch.min(torch.abs(leng), dim=2).values
         # print(distance)
-        output['plane_loss'] = torch.mean(distance) * 0
+        output['plane_loss'] = torch.mean(distance) * 1000
         loss = output['loss']
         loss += output['plane_loss']
         output['loss'] = loss
