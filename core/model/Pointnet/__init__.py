@@ -7,6 +7,8 @@ module_dict = {
     'pointnet++': PointnetPlus,
     'pointnet++2': PointnetPlusSSG,
 }
+
+
 def model_entry(config):
     name = config.name
     # print('model', module_dict.keys())

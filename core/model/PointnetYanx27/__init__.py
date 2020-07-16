@@ -11,6 +11,8 @@ module_dict = {
     'pointnetSSGInitialSaveFeature': PointnetPlusSSGInitialSaveFeature,
     'pointnetPlane': PointnetPlusPlane,
 }
+
+
 def model_entry(config):
     name = config.name
     if name not in module_dict.keys():
