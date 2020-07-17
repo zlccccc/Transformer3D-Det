@@ -15,15 +15,16 @@ class cls_plane_module_rotate(cls_module):
 
     def loss_plane_rotate(self, input, output):
         plane, plane_shift = output['plane'], output['plane_shift']
-        plane_should = torch.bmm(plane, input['forwardAffineMatShift'].type_as(plane))
+        plane_should = torch.bmm(plane_shift, input['forwardAffineMatShift'].permute(0, 2, 1).type_as(plane))
         # print(plane_should.shape, input['forwardAffineMatShift'].type_as(plane).shape, plane_shift.shape, '<-   ----   shape')
         norm_1 = torch.sqrt(torch.sum(plane[:, :, :3] ** 2, dim=2)).reshape(plane.shape[0], plane.shape[1], 1)
         norm_2 = torch.sqrt(torch.sum(plane_should[:, :, :3] ** 2, dim=2)).reshape(plane_should.shape[0], plane_should.shape[1], 1)
         plane = plane / norm_1
         plane_should = plane_should / norm_2
         # print(plane_should.shape, plane_shift.shape, '<-   ----   shape')
-        leng = (plane_shift - plane_should)
-        distance = torch.min(torch.abs(leng), dim=2).values
+        leng = (plane - plane_should)
+        # print(leng.shape)
+        distance = torch.sqrt(torch.sum(leng ** 2, dim=2))
         dist_mean = torch.mean(distance, dim=1)
         return dist_mean  # batch*size
 
@@ -55,8 +56,8 @@ class cls_plane_module_rotate(cls_module):
         output = super().calculate_loss(input, output)
         dist_mean = self.loss_plane(input, output)
         dist_rotate = self.loss_plane_rotate(input, output)
-        output['plane_loss'] = torch.mean(dist_mean) * 0
-        output['rotate_loss'] = torch.mean(dist_rotate) * 0
+        output['plane_loss'] = torch.mean(dist_mean) * 50
+        output['rotate_loss'] = torch.mean(dist_rotate) * 0.5
         loss = output['loss']
         loss += output['plane_loss']
         output['loss'] = loss
