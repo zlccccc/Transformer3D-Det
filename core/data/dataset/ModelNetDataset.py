@@ -68,7 +68,8 @@ class ModelNetDataset(Dataset):
 
     def _get_item(self, index):
         if index in self.cache:
-            point_set, cls = self.cache[index]
+            # point_set, cls = self.cache[index]
+            sample = self.cache[index]
         else:
             fn = self.datapath[index]
             cls = self.classes[self.datapath[index][0]]
@@ -84,15 +85,17 @@ class ModelNetDataset(Dataset):
             if not self.normal_channel:
                 point_set = point_set[:, 0:3]
 
+            # if len(self.cache) < self.cache_size:
+            #     self.cache[index] = (point_set, cls)
+            # point_set = torch.from_numpy(point_set).float()`
+            sample = {}
+            relativepath = '/'.join(self.datapath[index][1].split('/')[4:])
+            # print('path', self.datapath[index][0], self.datapath[index][1].split('/'), relativepath)
+            sample['relativepath'] = relativepath
+            sample['point_set'] = torch.from_numpy(point_set).float()
+            sample['cls'] = torch.from_numpy(cls).long()
             if len(self.cache) < self.cache_size:
-                self.cache[index] = (point_set, cls)
-        # point_set = torch.from_numpy(point_set).float()
-        sample = {}
-        relativepath = '/'.join(self.datapath[index][1].split('/')[4:])
-        # print('path', self.datapath[index][0], self.datapath[index][1].split('/'), relativepath)
-        sample['relativepath'] = relativepath
-        sample['point_set'] = torch.from_numpy(point_set).float()
-        sample['cls'] = torch.from_numpy(cls).long()
+                self.cache[index] = sample
         return sample
 
     def __getitem__(self, index):

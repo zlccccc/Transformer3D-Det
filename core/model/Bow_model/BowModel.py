@@ -12,8 +12,8 @@ class BowModel(cls_module):
         num_channel = config.num_channel
         num_centers = config.num_centers
         num_class = config.num_output
-        self.bow_dict = torch.FloatTensor(num_centers, num_channel).uniform_(-1, 1)
-        # self.register_parameter(self.bow_dict)
+        self.bow_dict = nn.Parameter(torch.FloatTensor(num_centers, num_channel).uniform_(-1, 1))
+        self.register_parameter('BOW_Weight', self.bow_dict)
         base_channels = 128
         self.fc1 = nn.Linear(num_centers, base_channels * 4)
         self.fc2 = nn.Linear(base_channels * 4, base_channels * 4)
@@ -27,7 +27,8 @@ class BowModel(cls_module):
 
     def _record_bow_dict(self, bow_dict):
         assert bow_dict.shape == self.bow_dict.shape, 'shape should be same'
-        self.bow_dict = bow_dict
+        # print(self.bow_dict.data)
+        self.bow_dict.data = bow_dict
 
     def _forward(self, input):
         x = input['point_set']
