@@ -260,7 +260,7 @@ class RandomAffine(object):
         if self.mirror:
             raise NotImplementedError('Mirror(corr_list) is not done')
         self.corr_list = corr_list  # TODO; for mirror
-        if jitter is not None:  # jitter?
+        if jitter is not None and jitter:  # jitter?
             assert isinstance(jitter, (tuple, list)) and len(jitter) == 2, \
                 "jitter should be a list or tuple and it must be of length 2."
             for s in jitter:

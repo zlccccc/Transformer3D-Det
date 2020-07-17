@@ -6,14 +6,14 @@ common:
         base_lr: 0.001
         weight_decay: 0.0001
         transform: # when transfrom
-            normalize: mean
+            normalize: None
             rotate: [10, 10, 10]
-            jitter: [0.001, 0.005]
+            jitter: 0 #[0.001, 0.005]
             shear: 0.005
             translate: 0.01
             scale: [0.95, 1.15]
             mirror: False
-            shift: 0 #percentage
+            shift: 0.4 #percentage
     logs:
         baselogger:
             path: log/log.txt
