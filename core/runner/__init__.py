@@ -1,5 +1,6 @@
 from .iterRunner import iterRunner
 from .testRunner import testRunner
+from .bowRunner import bowRunner
 
 
 def getrunner(config):
@@ -7,6 +8,8 @@ def getrunner(config):
     print('using runner %s' % name)
     if name == 'iteration':
         return iterRunner
+    elif name == 'bow':
+        return bowRunner
     elif name == 'test':
         return testRunner
     else:

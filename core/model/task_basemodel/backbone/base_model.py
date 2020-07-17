@@ -35,7 +35,6 @@ class base_module(nn.Module):
 
     @abstractmethod
     def _before_forward(self, input):
-        print('base before forward basemodel')
         return input
 
     @abstractmethod

@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+from .Bow_model import model_entry as BowModel
 from .Pointnet import model_entry as Pointnet
 from .PointnetYanx27 import model_entry as PointnetInitial
 
@@ -7,6 +8,7 @@ from .PointnetYanx27 import model_entry as PointnetInitial
 model_entry_name = [
     Pointnet,
     PointnetInitial,
+    BowModel,
 ]
 
 

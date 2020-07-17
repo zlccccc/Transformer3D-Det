@@ -19,11 +19,12 @@ common:
         path: ./ckpt_best.pth.tar
         type: recover
 train:
-    batch_size: 3
-    workers: 0
+    batch_size: 24
+    workers: 6
     dataset:
-        name: Test3DDataset
+        name: ModelNetDataset
         split: train
+        root: /data1/zhaolichen/data/modelnet40_normal_resampled
         npoint: 1024
     optimizer:
         name: Adam
@@ -40,7 +41,7 @@ train:
         name: bow
         num_channel: 6
         num_centers: 100
-        epoch_build_dict: 10
+        epoch_build_dict: 200
         max_iter: 80000
         # test and save
         test_freq: 1000
@@ -48,14 +49,11 @@ train:
         log_freq: 100
         snapshot_save_path: snapshot
 test:
-    batch_size: 3
-    workers: 0
+    batch_size: 24
+    workers: 6
     dataset:
         testset:
-            name: Test3DDataset
+            name: ModelNetDataset
             split: test
-            npoint: 1024
-        validateset:
-            name: Test3DDataset
-            split: validate
+            root: /data1/zhaolichen/data/modelnet40_normal_resampled
             npoint: 1024

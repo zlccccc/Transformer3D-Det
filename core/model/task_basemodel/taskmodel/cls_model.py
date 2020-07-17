@@ -10,6 +10,7 @@ class cls_module(base_module):
     def calculate_loss(self, input, output):
         gt = input['cls'][:, 0]
         out = output['value']
+        # print(gt, out, '<- calculate loss')
         output['cls_loss'] = F.cross_entropy(out, gt)
 
         output['n_count'] = out.shape[0]
