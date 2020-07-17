@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from core.model.task_basemodel.cls_point_plane_model import cls_plane_module
+from core.model.task_basemodel.realmodel.cls_point_plane_model import cls_plane_module
 from .pointnet_util import PointNetSetAbstraction
 from core.model.PointnetYanx27 import provider
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     }
     config = EasyDict(config)
     print(os.getcwd())
-    net = PointnetPlusSSGInitial(config)
+    net = PointnetPlusPlane(config)
     net = net.cuda()
     net.set_params()
     # exit()

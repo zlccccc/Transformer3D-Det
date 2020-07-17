@@ -1,5 +1,5 @@
 import torch.nn as nn
-from core.model.task_basemodel.cls_model import cls_module
+from core.model.task_basemodel.taskmodel.cls_model import cls_module
 from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature
 
 

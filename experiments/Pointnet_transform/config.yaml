@@ -13,7 +13,7 @@ common:
             translate: 0.01
             scale: [0.95, 1.15]
             mirror: False
-            shift: 0.1 #percentage
+            shift: 0 #percentage
     logs:
         baselogger:
             path: log/log.txt
@@ -26,7 +26,7 @@ common:
         path: ./ckpt_best.pth.tar
         type: recover
 train:
-    batch_size: 3
+    batch_size: 6
     workers: 0
     dataset:
         name: Test3DDataset
@@ -52,7 +52,7 @@ train:
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 3
+    batch_size: 6
     workers: 0
     dataset:
         testset:

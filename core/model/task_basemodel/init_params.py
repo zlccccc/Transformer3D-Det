@@ -10,7 +10,7 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
     a = 0.25
     if isinstance(m, nn.Conv2d):
         fan_in, fan_out = init._calculate_fan_in_and_fan_out(m.weight.data)
-        gain = math.sqrt((fan_in+fan_out/2/fan_in))
+        gain = math.sqrt((fan_in + fan_out / 2 / fan_in))
         if init_cnn == 'kaiming_uniform':
             init.kaiming_uniform_(m.weight.data, a, nonlinearity=nonlinearity)
         elif init_cnn == 'kaiming_normal':
@@ -35,7 +35,7 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
         init.constant_(m.bias.data, 0)
     elif isinstance(m, nn.Linear):
         fan_in, fan_out = init._calculate_fan_in_and_fan_out(m.weight.data)
-        gain = math.sqrt((fan_in+fan_out)/2/fan_in)
+        gain = math.sqrt((fan_in + fan_out) / 2 / fan_in)
         if init_linear == 'kaiming_uniform':
             init.kaiming_uniform_(m.weight.data, a, nonlinearity=nonlinearity)
         elif init_linear == 'kaiming_normal':

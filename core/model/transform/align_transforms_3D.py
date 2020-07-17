@@ -1,4 +1,5 @@
 import numbers
+from torchvision.transforms import transforms
 import torchvision.transforms.functional as TF
 import numpy as np
 import random
@@ -12,22 +13,20 @@ def applyAffineMatrix3D(points: torch.tensor, AffineMatrix: torch.tensor):
     :return: result points
     """
     # AffineMatrix: 4*4(only 4*3 useful)
-    points = points.cuda()
-    cat_tensor = torch.ones(points.shape[0], 1).double().cuda()
-    points = torch.cat((points, cat_tensor), dim=1)
-    points = torch.mm(points, AffineMatrix.cuda())[:, :3]
-    points = points.cpu()
+    cat_tensor = torch.ones(points.shape[0], 1).type_as(points)
+    multi_points = torch.cat((points[:, :3], cat_tensor), dim=1)
+    points[:, :3] = torch.mm(multi_points, AffineMatrix.type_as(points))[:, :3]
     return points
 
 
-def applyAffineMatrices(points: torch.tensor, AffineMatrix: torch.tensor):  # for batch
+def applyAffineMatrices(points: torch.tensor, AffineMatrix: torch.tensor):  # for batch; canonly input xyz
     for _ in range(points.shape[0]):
         shape = points[_].shape
-        points[_] = applyAffineMatrix3D(points[_].reshape(-1, 3).double(), AffineMatrix[_]).reshape(shape)
+        points[_] = applyAffineMatrix3D(points[_], AffineMatrix[_]).reshape(shape)
     return points
 
 
-def getAffineMatrixNormalize(points, type):
+def getAffineMatrixNormalize(points, type):  # TODO: checkit; sum(dim=1)
     """
     :param points: n*3, get mean position and std(?)
     :param type: farthest
@@ -35,7 +34,7 @@ def getAffineMatrixNormalize(points, type):
     """
     forward, backward = torch.eye(4).double(), torch.eye(4).double()
     # print('points,shape', points.shape)
-    mean = torch.mean(points, dim=0).double()
+    mean = torch.mean(points[:, :3], dim=0).double()
     if type == 'farthest':
         dist = torch.sqrt(torch.max((points - mean) ** 2))
         # print(dist)
@@ -43,8 +42,11 @@ def getAffineMatrixNormalize(points, type):
         dist = (points - mean) ** 2
         # print('dist max mean sum mean:', torch.max(dist), torch.min(dist), torch.sum(dist), torch.mean(dist))
         dist = torch.sqrt(torch.mean(dist)) * 2.5
+    elif type == 'None':
+        mean, dist = 0, 1
     else:
         raise NotImplementedError('Normalization Error', type)
+    # print(mean, dist, ' <--- mean, dist')
     if dist:
         forward[0][0] = forward[1][1] = forward[2][2] = 1 / dist
         forward[3][0:3] = -mean / dist
@@ -148,9 +150,10 @@ def jitter_data(points, jitter_range):
     :return: points
     """
     sigma, clip_range = jitter_range
-    jitter_data = sigma * torch.randn(points.shape).double()
+    jitter_data = sigma * torch.randn(points[:, :3].shape).double()
     jitter_data = torch.clamp(jitter_data, -clip_range, clip_range)
-    return points + jitter_data
+    jitter_data = jitter_data.type_as(points)
+    return points[:, :3] + jitter_data
 
 
 class ToTensor(object):
@@ -163,43 +166,39 @@ class ToTensor(object):
         """
         Args:
             points: NumpyArray
-            landmarks: NumpyArray
         Returns:
             points: Tensor
-            landmarks: Tensor
         """
         sample['points'] = torch.from_numpy(sample['points'])
-        sample['landmarks'] = torch.from_numpy(sample['landmarks'])
         if 'colors' in sample.keys():
             sample['colors'] = torch.from_numpy(sample['colors']).float()
         return sample
 
 
-class SamplePoints(object):
-    def __init__(self, sample_points):
+class SamplePoints(object):  # split to two part
+    def __init__(self, sample_points, sample_type):
         """
         :param sample_points: sample from initial points
         """
+        print('sample points: split it')
         self.sample_points = sample_points
+        self.type = type
 
     def __call__(self, sample):
         """
         Args:
             points: Array
-            landmarks: Array
         Returns:
             points: NumpyArray
-            landmarks: NumpyArray
         """
-        initial_points, landmarks = sample['points'], sample['landmarks']
-        landmarks = np.array(landmarks).reshape(-1, 3).astype(float)
+        initial_points = sample['points']
         random.shuffle(initial_points)
         points, L = [], len(initial_points)
         while len(points) < self.sample_points:
             points.extend(initial_points[:min(L, self.sample_points - len(points))])
         # print(points[l], initial_points[0], l)
         points = np.array(points).astype(float)
-        sample['points'], sample['landmarks'] = points[:, :3], landmarks
+        sample['points'] = points[:, :3]
         if points.shape[-1] != 3:
             sample['colors'] = points[:, 3:]
         return sample
@@ -302,20 +301,17 @@ class RandomAffine(object):
         return forwardAffineMat, backwardAffineMat
 
     def __call__(self, sample):
-        points, landmarks = sample['points'], sample['landmarks']
+        points = sample['points']
         if self.normalize:
-            forward, backward = getAffineMatrixNormalize(points, self.normalize)
+            forward, backward = getAffineMatrixNormalize(points[:, :3], self.normalize)
             forwardAffineMat = forward
             backwardAffineMat = backward
 
         if self.jitter:
-            points = jitter_data(points, self.jitter)
+            points[:, :3] = jitter_data(points[:, :3], self.jitter)
 
-        # print(points, landmarks)
         # points = applyAffineMatrix3D(points, forwardAffineMat) # affine matrix not applied
-        # landmarks = applyAffineMatrix3D(landmarks, forwardAffineMat)
         sample['points'] = points
-        sample['landmarks'] = landmarks
         sample['forwardAffineMat'], sample['backwardAffineMat'] = self.getAffileMat(forwardAffineMat, backwardAffineMat)
         if self.shift:
             sample['forwardAffineMatShift'], sample['backwardAffineMatShift'] = self.getAffileMat(torch.eye(4).double(),
@@ -323,13 +319,67 @@ class RandomAffine(object):
                                                                                                   self.shift)
         # print(sample['forwardAffineMat'])
         # print(sample['forwardAffineMat'], sample['forwardAffineMatShift'])
-        # print(points, landmarks)
         # print('final multi:', torch.mm(forwardAffineMat, backwardAffineMat), '\n back',
         #      torch.mm(backwardAffineMat, forwardAffineMat))
-        # save_points(points, landmarks, 'check.obj', 'check_result.obj')
         # exit()
         # backwardAffineMat = forwardAffineMat.inverse() is also okay
         return sample
+
+
+def get_transformlist(config):
+    traintransformslist = []
+    testtransformslist = []
+    if 'sample_points' in config.keys():  # must a list
+        traintransformslist = [SamplePoints(sample_points=config.sample_points)]
+        testtransformslist = [SamplePoints(sample_points=config.sample_points)]
+    if config.get('to_tensor', False):  # numpy to tensor
+        traintransformslist.append(ToTensor())
+        testtransformslist.append(ToTensor())
+
+    traintransformslist.append(RandomAffine(normalize=config.normalize,
+                                            degrees=config.rotate,
+                                            translate=config.translate,
+                                            scale=config.scale,
+                                            jitter=config.jitter,
+                                            shear=config.shear,
+                                            mirror=config.mirror,
+                                            shift=config.get('shift', 0)))
+    traintransforms = transforms.Compose(traintransformslist)
+
+    testtransformslist.append(RandomAffine(normalize=config.normalize,
+                                           degrees=None, translate=None,
+                                           scale=((config.scale[0] + config.scale[1]) / 2,
+                                                  (config.scale[0] + config.scale[1]) / 2),
+                                           jitter=None, shear=None,
+                                           mirror=False, shift=None))
+    testtransforms = transforms.Compose(testtransformslist)
+    return traintransforms, testtransforms
+
+
+def apply_transform(transform, xyz):
+    sample = {}
+    '''
+    'forwardAffineMat'
+    'backwardAffineMat'
+    'forwardAffineMatShift'
+    'backwardAffineMatShift'
+    '''
+    for _ in range(xyz.shape[0]):
+        now = transform({'points': xyz[_]})
+        for name in now.keys():
+            if 'Affine' in name:
+                if name not in sample.keys():
+                    sample[name] = []
+                sample[name].append(now[name])
+    for name in sample.keys():
+        # print(sample[name], 'sample key <--- for testing')
+        sample[name] = torch.stack(sample[name], dim=0)
+        # print(sample[name], 'sample key <--- DONE; for testing')
+    if 'forwardAffineMat' in sample.keys():
+        sample['point_set'] = applyAffineMatrices(xyz, sample['forwardAffineMat'])
+    if 'forwardAffineMatShift' in sample.keys():
+        sample['point_set_shift'] = applyAffineMatrices(sample['point_set'], sample['forwardAffineMatShift'])
+    return sample
 
 
 if __name__ == '__main__':

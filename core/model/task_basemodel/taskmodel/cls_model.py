@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from core.model.task_basemodel.base_model import base_module
+from core.model.task_basemodel.backbone.base_model import base_module
 
 
 class cls_module(base_module):
@@ -26,8 +26,8 @@ class cls_module(base_module):
         gt = input['cls'].view(-1)
         out = output['value']
         maxpos = torch.argmax(out, dim=1)
-        #maxpos = out.data.max(1)[1]  #same
-        #print(out.data.max(1)[1], torch.argmax(out, dim=1))
+        # maxpos = out.data.max(1)[1]  #same
+        # print(out.data.max(1)[1], torch.argmax(out, dim=1))
         output['accurancy_error'] = (maxpos == gt).sum().float()
         output['instance_error'] = (maxpos != gt).sum().float()
         output['n_count'] = out.shape[0]

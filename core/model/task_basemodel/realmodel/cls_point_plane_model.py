@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from core.model.task_basemodel.cls_model import cls_module
+from core.model.task_basemodel.taskmodel.cls_model import cls_module
 
 
 class cls_plane_module(cls_module):

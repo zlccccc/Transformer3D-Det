@@ -1,5 +1,5 @@
 import torch.nn as nn
-from core.model.task_basemodel.cls_model import cls_module
+from core.model.task_basemodel.taskmodel.cls_model import cls_module
 from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature
 
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     }
     config = EasyDict(config)
     print(os.getcwd())
-    net = PointnetPlus(config)
+    net = PointnetPlusSSG(config)
     net = net.cuda()
     net.set_params()
     # exit()

@@ -21,7 +21,7 @@ class Test3DDataset(Dataset):
     def __getitem__(self, index):
         # print('dataset: testitem %d' % index)
         sample = {}
-        point_set = np.random.normal(size=(self.npoint, 3))
+        point_set = np.random.normal(size=(self.npoint, 6))  # with color
         seg = np.random.randint(0, 3, size=(self.npoint, 1))
         cls_ = np.random.randint(0, 3, size=(1))
         sample['point_set'] = torch.from_numpy(point_set).float()

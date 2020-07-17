@@ -4,6 +4,11 @@ from abc import abstractmethod
 
 
 class base_module(nn.Module):
+    '''backbone
+    _before_forward -> _forward -> _after_forward
+    return calculate_loss / calculate_error / origin
+    '''
+
     def __init__(self):
         self.mode = None
         super(base_module, self).__init__()
@@ -28,14 +33,19 @@ class base_module(nn.Module):
         self.mode = 'test'
         self.eval()
 
+    @abstractmethod
     def _before_forward(self, input):
+        print('base before forward basemodel')
         return input
 
+    @abstractmethod
     def _after_forward(self, input):
         return input
 
     def forward(self, input):
         input = self._before_forward(input)
+        # _before_forward = getattr(self, '_before_forward')  # same
+        # print('before_forward: done')
         output = self._forward(input)
         input = self._after_forward(input)
         if self.mode == 'train':
