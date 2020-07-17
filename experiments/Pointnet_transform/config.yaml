@@ -22,7 +22,7 @@ common:
     snapshot:
         save_path: snapshot
     load:
-        load: False
+        load: True
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:

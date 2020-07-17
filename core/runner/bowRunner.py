@@ -21,11 +21,16 @@ def bowRunner(info):
             if epoch % config.log_freq == 0:
                 loggers.update_loss({'info_out': 'Building Epoch %d/%s ' % (epoch + 1, config.epoch_build_dict)}, True)
             total_sum_centers, total_count_centers = 0, 0
+            # t = time.time()
             for batch_id, data in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
                 points = data['point_set'].float().cuda()
-                _, sc_val, cc_val = compute_centers(points, centers_val)
-                total_sum_centers += sc_val
-                total_count_centers += cc_val
+                # print('load', time.time() - t)
+                # t = time.time()
+                with torch.no_grad():  # not useful
+                    _, sc_val, cc_val = compute_centers(points, centers_val)
+                    total_sum_centers += sc_val
+                    total_count_centers += cc_val
+                # print(time.time() - t)
             centers_val = total_sum_centers / total_count_centers
         model._record_bow_dict(centers_val)  # SET_CENTER_VAL
     # CALCULATE TIME
