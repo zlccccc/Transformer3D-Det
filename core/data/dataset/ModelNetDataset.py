@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import warnings
 import os
+import time
 from torch.utils.data import Dataset
 warnings.filterwarnings('ignore')
 
@@ -39,7 +40,7 @@ def farthest_point_sample(point, npoint):
 
 
 class ModelNetDataset(Dataset):
-    def __init__(self, root, npoint=1024, split='train', uniform=False, normal_channel=True, cache_size=15000):
+    def __init__(self, root, npoint=1024, split='train', uniform=False, normal_channel=True, cache_size=15000, build_cache=True):
         self.root = root
         self.npoints = npoint
         self.uniform = uniform
@@ -62,14 +63,22 @@ class ModelNetDataset(Dataset):
 
         self.cache_size = cache_size  # how many data points to cache in memory
         self.cache = {}  # from index to (point_set, cls) tuple
+        if build_cache:
+            t_start = time.time()
+            print('building dataset(during initialize)')
+            for index in range(self.__len__()):
+                if index % 100 == 0:
+                    print('building dataset: index %d, time=%.2f' % (index, time.time()-t_start), flush=True)
+                self._get_item(index)
 
     def __len__(self):
         return len(self.datapath)
 
-    def _get_item(self, index):
+    def _get_item(self, index): # when use: cache not updated
         if index in self.cache:
             # point_set, cls = self.cache[index]
             sample = self.cache[index]
+            # print('index in cache')
         else:
             fn = self.datapath[index]
             cls = self.classes[self.datapath[index][0]]
