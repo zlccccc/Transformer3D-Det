@@ -17,7 +17,7 @@ class ModelNetFeatureDataset(Dataset):
 
         self.cache_size = cache_size  # how many data points to cache in memory
         self.cache = {}  # from index to (point_set, cls) tuple
-        if build_cache:
+        if build_cache:  # and build_cache!='False':
             t_start = time.time()
             print('building dataset(during initialize)')
             for index in range(self.__len__()):
@@ -38,11 +38,16 @@ class ModelNetFeatureDataset(Dataset):
             datapath = os.path.join(self.root, datapath)
             data = [[float(value) for value in line.strip().split()] for line in open(datapath)]
             data = np.array(data)
-            data[:, :3] = data[:, :3] * self.xyz_weight
+            data[:, 3:] = data[:, 3:] / 3
             data = torch.from_numpy(data).float()
+            #data = data[:, :3]
+            data[:, :3] = 0
             cls = np.array([cls]).astype(np.int32)
             sample = {}
             sample['point_set'] = data
+            weight = torch.ones(data.shape)
+            weight[:, 3:] = weight[:, 3:] / self.xyz_weight
+            sample['dist_weight'] = weight
             sample['cls'] = torch.from_numpy(cls).long()
             if len(self.cache) < self.cache_size:
                 self.cache[index] = sample

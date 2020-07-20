@@ -2,7 +2,7 @@ common:
     model:
         name: BowModel
         normal_channel: True
-        num_centers: 50
+        num_centers: 100
         num_output: 40
         num_channel: 131  # input channel
         base_lr: 0.001
@@ -19,13 +19,14 @@ common:
         path: ./ckpt_best.pth.tar
         type: recover
 train:
-    batch_size: 64
+    batch_size: 32
     workers: 8
     dataset:
         name: ModelNetFeatureDataset
         root: /data1/zhaolichen/data/featuredata
         labelpath: modelnet40_normal_resampled/label_train.txt
-        xyz_weight: 200
+        # build_cache: False
+        xyz_weight: 5
     optimizer:
         name: Adam
         betas: [0.9, 0.999]
@@ -40,20 +41,21 @@ train:
     runner:
         name: bow
         num_channel: 131
-        num_centers: 50
+        num_centers: 100
         epoch_build_dict: 200
         max_iter: 80000
         # test and save
         test_freq: 1000
         save_freq: 10000
-        log_freq: 100
+        log_freq: 40
         snapshot_save_path: snapshot
 test:
-    batch_size: 64
-    workers: 24
+    batch_size: 32
+    workers: 8
     dataset:
         testset:
             name: ModelNetFeatureDataset
             root: /data1/zhaolichen/data/featuredata
             labelpath: modelnet40_normal_resampled/label_test.txt
-            xyz_weight: 200
+            xyz_weight: 5
+            # build_cache: False

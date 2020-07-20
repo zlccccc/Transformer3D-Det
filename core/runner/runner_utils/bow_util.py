@@ -59,8 +59,7 @@ def compute_bow(pred):
 #     return histogram
 
 
-def compute_centers(samples, centers):
-
+def compute_centers(samples, centers, feature_weight=None):
     batchsize, num_points = samples.size(0), samples.size(1)
     num_centers = centers.size(0)
     samples_ex = torch.unsqueeze(samples, 2)
@@ -69,8 +68,18 @@ def compute_centers(samples, centers):
     centers_ex = centers_ex.repeat(batchsize, num_points, 1, 1)
     # import pdb
     # pdb.set_trace()
-    diff = torch.sum((samples_ex - centers_ex) ** 2, dim=-1)
-    pred = torch.min(diff, dim=-1)[1]
+    leng = (samples_ex - centers_ex) ** 2
+    if feature_weight is not None:
+        feature_weight = feature_weight.unsqueeze(2)
+        # print(leng.shape, feature_weight.shape)
+        feature_weight = feature_weight.repeat(1, 1, num_centers, 1)
+        leng = torch.mul(leng, feature_weight)
+    diff = torch.sum(leng, dim=-1)
+    # print(torch.min(diff[0], dim=-1), flush=True)
+    dist, pred = torch.min(diff, dim=-1)
+    dist_center, pred_center = torch.min(diff, dim=-2)
+    
+    #print(torch.mean(dist), flush=True)
     # pred = pred.type(torch.FloatTensor)
     pred_onehot = torch.FloatTensor(batchsize, num_points, num_centers).cuda()
     pred_onehot.zero_()
@@ -80,7 +89,7 @@ def compute_centers(samples, centers):
     sum_by_center = torch.sum(samples_ex * pred_ex, dim=[0, 1])
     count_by_center = torch.sum(pred_ex, dim=[0, 1, 3]).unsqueeze(-1)
 
-    return histogram, sum_by_center, count_by_center
+    return histogram, sum_by_center, count_by_center, torch.mean(torch.sqrt(dist))
 
 #
 # def compute_centers(samples, centers):

@@ -32,7 +32,11 @@ class BowModel(cls_module):
 
     def _forward(self, input):
         x = input['point_set']
-        x, SC, CC = compute_centers(x, self.bow_dict)
+        if 'dist_weight' in input.keys():
+            weight = input['dist_weight'].float().cuda()
+            x, SC, CC, DD = compute_centers(x, self.bow_dict, weight)
+        else:
+            x, SC, CC, DD = compute_centers(x, self.bow_dict)
         x = F.relu(self.bn1(self.fc1(x)))
         x = F.relu(self.bn2(self.fc2(x)))
         x = F.relu(self.bn3(self.fc3(x)))
