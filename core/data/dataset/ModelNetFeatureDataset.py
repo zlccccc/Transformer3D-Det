@@ -25,7 +25,6 @@ class ModelNetFeatureDataset(Dataset):
                     print('building dataset: index %d, time=%.2f' % (index, time.time()-t_start), flush=True)
                 self._get_item(index)
 
-
     def __len__(self):
         return len(self.info)
 

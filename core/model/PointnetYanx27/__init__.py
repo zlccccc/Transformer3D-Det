@@ -5,6 +5,7 @@ from .PointnetSSG import PointnetPlusSSGInitial
 from .PointnetSSGSaveFeature import PointnetPlusSSGInitialSaveFeature
 from .PointnetPlane import PointnetPlusPlane
 from .PointnetPlaneRotate import PointnetPlusPlaneRotate
+from .PointnetPointPlaneRotate import PointnetPlusPointPlaneRotate
 
 module_dict = {
     'pointnetInitial': PointnetPlusInitial,
@@ -12,6 +13,7 @@ module_dict = {
     'pointnetSSGInitialSaveFeature': PointnetPlusSSGInitialSaveFeature,
     'pointnetPlane': PointnetPlusPlane,
     'pointnetPlaneRotate': PointnetPlusPlaneRotate,
+    'pointnetPointPlane': PointnetPlusPointPlaneRotate,
 }
 
 
