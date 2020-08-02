@@ -2,13 +2,13 @@ common:
     model:
         name: pointnetSG 
         objmodel:
-            name: pointnet++2
-            in_channel: 3
-            num_output: 150
-        relmodel:
-            name: pointnet++2
-            in_channel: 1
+            name: pointnet
+            in_channel: 0
             num_output: 27
+        relmodel:
+            name: pointnet
+            in_channel: 1
+            num_output: 160
     logs:
         baselogger:
             path: log/log.txt
@@ -22,11 +22,11 @@ common:
         type: recover
 train:
     batch_size: 2
-    workers: 6
+    workers: 0
     dataset:
         name: 3DSSGDataset
         split: train
-        root: /data1/zhaolichen/data/3DSSG_test
+        root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
         npoint: 1024
     optimizer:
         name: Adam
@@ -49,10 +49,10 @@ train:
         snapshot_save_path: snapshot
 test:
     batch_size: 2
-    workers: 6
+    workers: 0
     dataset:
         testset:
             name: 3DSSGDataset
             split: val
-            root: /data1/zhaolichen/data/3DSSG_test
+            root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
             npoint: 1024
