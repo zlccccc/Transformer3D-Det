@@ -19,7 +19,7 @@ common:
         path: ./ckpt_best.pth.tar
         type: recover
 train:
-    batch_size: 64
+    batch_size: 32
     workers: 24
     dataset:
         name: ModelNetDataset
@@ -49,7 +49,7 @@ train:
         log_freq: 40
         snapshot_save_path: snapshot
 test:
-    batch_size: 64
+    batch_size: 32
     workers: 8
     dataset:
         testset:
