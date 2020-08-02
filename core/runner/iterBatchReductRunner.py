@@ -4,7 +4,7 @@ import torch
 import time
 import traceback
 
-
+# TODO
 def iterRunner(info):
     config = info['config']
     train_loader_iter = iter(info['traindataloader'])
@@ -43,9 +43,10 @@ def iterRunner(info):
                     input[key] = input[key].float()  # tofloat
                 if isinstance(input[key], torch.Tensor):
                     input[key] = input[key].cuda()
+        # TODO change zero_grad
         optimizer.zero_grad()
         t_loader = time.time()
-        output = model(input)  # also could backward inside
+        output = model(input)
         t_forward = time.time()
         assert 'loss' in output.keys(), 'Key "loss" should in output.keys'
         loss = output['loss']

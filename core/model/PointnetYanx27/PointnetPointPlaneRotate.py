@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from core.model.task_basemodel.realmodel.cls_point_plane_model_point import cls_plane_module_rotate
+from core.model.task_basemodel.realmodel.cls_point_plane_model_rotate import cls_plane_module_rotate
 from .pointnet_util import PointNetSetAbstraction
 from core.model.PointnetYanx27 import provider
 

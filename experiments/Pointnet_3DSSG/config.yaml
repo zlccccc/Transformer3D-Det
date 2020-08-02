@@ -23,9 +23,9 @@ train:
     batch_size: 24
     workers: 6
     dataset:
-        name: 3DSSGDataset
+        name: ModelNetDataset
         split: train
-        root: ~/
+        root: /data1/zhaolichen/data/modelnet40_normal_resampled
         npoint: 1024
     optimizer:
         name: Adam
@@ -51,7 +51,7 @@ test:
     workers: 6
     dataset:
         testset:
-            name: 3DSSGDataset
+            name: ModelNetDataset
             split: test
             root: /data1/zhaolichen/data/modelnet40_normal_resampled
             npoint: 1024

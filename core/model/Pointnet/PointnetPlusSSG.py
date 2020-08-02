@@ -6,15 +6,14 @@ from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNet
 class PointnetPlusSSG(cls_module):
     def __init__(self, config):
         self.params = []
-        normal_channel = config.get('normal_channel', True)
+        assert 'normal_channel' not in config.keys()  # not same as PointnetInitial
         num_output = config.get('num_output', 100)
+        self.in_channel = config.get('in_channel', 0)  # more
         self.base_lr = config.base_lr
         self.weight_decay = config.weight_decay
         self.config = config
         super(PointnetPlusSSG, self).__init__()
-        in_channel = 3 if normal_channel else 0
-        self.normal_channel = normal_channel
-        self.sa1 = PointNetMSG(512, [0.2], [32], in_channel,
+        self.sa1 = PointNetMSG(512, [0.2], [32], self.in_channel,
                                [[64, 64, 128]],
                                [128])
         self.sa2 = PointNetMSG(128, [0.4], [64], 128,

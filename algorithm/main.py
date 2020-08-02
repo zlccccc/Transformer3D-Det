@@ -42,7 +42,7 @@ def main():
     parameters = model.set_params()
     config.train.optimizer['lr'] = config.train.lr_scheduler.base_lr
     optimizer = get_optimizer(config.train.optimizer, parameters)
-    # load model params
+    # load model pa rams
     lowest_err, last_iter = float('inf'), -1
     if config.common.load.load:  # load model
         load_path = config.common.load.path
