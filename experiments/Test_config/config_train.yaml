@@ -21,12 +21,12 @@ common:
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
-    batch_size: 2
+    batch_size: 3
     workers: 6
     dataset:
         name: 3DSSGDataset
         split: train
-        root: /data1/zhaolichen/data/3DSSG_test
+        root: /data1/zzha5029/datasets/3DSSG/lighter_point_cloud
         npoint: 1024
     optimizer:
         name: Adam
@@ -48,11 +48,11 @@ train:
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 2
+    batch_size: 24
     workers: 6
     dataset:
         testset:
             name: 3DSSGDataset
             split: val
-            root: /data1/zhaolichen/data/3DSSG_test
+            root: /data1/zzha5029/datasets/3DSSG/lighter_point_cloud
             npoint: 1024

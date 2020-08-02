@@ -86,8 +86,10 @@ class base_module(nn.Module):
         #     if not module_trainable:
         #         print('params not set:', type(module), name)
 
+        # print('get params start; for check')
         # for name, param in self.named_parameters():
         #     if name not in arranged_names:
         #         self.params.append({'params': param})
-
+        # print('get params end')
+        # print('params', self.named_parameters().keys())
         return self.parameters()

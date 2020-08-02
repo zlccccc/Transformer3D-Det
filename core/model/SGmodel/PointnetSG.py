@@ -8,8 +8,11 @@ class PointNetSG(base_module):
     def __init__(self, config):
         super(PointNetSG, self).__init__()
         self.params = []
-        self.obj_module = model_entry(config.obj_config)
-        self.rel_module = model_entry(config.rel_config)
+        self.obj_module = model_entry(config.objmodel)
+        self.rel_module = model_entry(config.relmodel)
+        assert self.obj_module is not None, 'obj module is None'
+        assert self.rel_module is not None, 'rel module is None'
+        # print(self.obj_module.parameters())
         self.init_relu = 'relu'
         self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
 

@@ -26,7 +26,7 @@ def iterRunner(info):
     model.train_mode()  # change mode
     print('last_iter:', last_iter)
     for iter_id in range(last_iter + 1, config.max_iter + 1):
-        for tries in range(100):
+        for tries in range(3):
             try:
                 input = next(train_loader_iter)
                 break

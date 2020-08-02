@@ -9,8 +9,8 @@ class PointnetPlusSSG(cls_module):
         assert 'normal_channel' not in config.keys()  # not same as PointnetInitial
         num_output = config.get('num_output', 100)
         self.in_channel = config.get('in_channel', 0)  # more
-        self.base_lr = config.base_lr
-        self.weight_decay = config.weight_decay
+        #self.base_lr = config.base_lr
+        #self.weight_decay = config.weight_decay
         self.config = config
         super(PointnetPlusSSG, self).__init__()
         self.sa1 = PointNetMSG(512, [0.2], [32], self.in_channel,

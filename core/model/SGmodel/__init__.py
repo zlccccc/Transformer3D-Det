@@ -3,7 +3,7 @@ import torch.nn as nn
 from .PointnetSG import PointNetSG
 
 module_dict = {
-    'PointnetSG': PointNetSG,
+    'pointnetSG': PointNetSG,
 }
 
 

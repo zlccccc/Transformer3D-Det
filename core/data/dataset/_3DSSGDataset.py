@@ -75,7 +75,6 @@ class PCSGDataset(Dataset):
         self.uniform = uniform
 
         self.normal_channel = normal_channel
-        self.data_split = split
         self.object_only = object_only
         self.rel_only = rel_only
         ######## scene graph version ##########################
@@ -89,16 +88,20 @@ class PCSGDataset(Dataset):
         #     val_path = '/home/zzha5029/datasets/3DSSG/test3/val/'
         val_files = [f for f in glob.glob(val_path + "/*.json", recursive=True)]
 
-        print(train_files[0])
-        print(val_files[0])
+        #print(train_path, val_path)
+
+        print('train obj sample', train_files[0])
+        print('val obj sample', val_files[0])
 
         assert (split == 'train' or split == 'val')
         assert (self.normal_channel == False)
         if (split == 'train'):
+            self.data_root = train_path
             self.datapath = train_files
             #f = open('/home/zzha5029/datasets/3DSSG/3DSSG_subset/relationships_train.json')
             #gt_data = json.load(f)
         elif(split == 'val'):
+            self.data_root = val_path
             self.datapath = val_files
             #f = open('/home/zzha5029/datasets/3DSSG/3DSSG_subset/relationships_validation.json')
             #gt_data = json.load(f)
@@ -135,9 +138,8 @@ class PCSGDataset(Dataset):
                 _, object_id = object_key.split('_')
                 object_idx[i] = int(object_id)
                 # print(object_id)
-                data_root = '/home/zzha5029/datasets/3DSSG/lighter_point_cloud/' + self.data_split + '/'
                 #data_root = '/home/zzha5029/datasets/3DSSG/test2/' + self.data_split + '/'
-                object_pc_data_dir = data_root + object_key + '.npy'
+                object_pc_data_dir = os.path.join(self.data_root, object_key + '.npy')
                 object_pc_data = np.load(object_pc_data_dir)
                 object_pc_label = sg_data['object'][object_key]
                 object_pc_data_num = len(object_pc_data)
@@ -169,9 +171,9 @@ class PCSGDataset(Dataset):
                 rel_idx[i, 0] = int(subject_id)
                 rel_idx[i, 1] = int(object_id)
                 #print(subject_id, object_id)
-                data_root = '/home/zzha5029/datasets/3DSSG/lighter_point_cloud/' + self.data_split + '/'
+                # data_root = '/home/zzha5029/datasets/3DSSG/lighter_point_cloud/' + self.data_split + '/'
                 #data_root = '/home/zzha5029/datasets/3DSSG/test2/' + self.data_split + '/'
-                rel_pc_data_dir = data_root + rel_key + '.npy'
+                rel_pc_data_dir = os.path.join(self.data_root, rel_key + '.npy')
                 rel_pc_data = np.load(rel_pc_data_dir)
                 # print(rel_pc_data.dtype)
                 rel_pc_label = sg_data['rel'][rel_key]

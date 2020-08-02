@@ -15,7 +15,7 @@ def get_one_dataset(config: dict):
     elif name == 'ModelNetFeatureDataset':
         return ModelNetFeatureDataset(**config)
     elif name == '3DSSGDataset':
-        return ModelNetFeatureDataset(**config)
+        return PCSGDataset(**config)
     else:
         raise NotImplementedError(name)
 
