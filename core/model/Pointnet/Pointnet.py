@@ -42,7 +42,7 @@ if __name__ == "__main__":
     }
     config = EasyDict(config)
     print(os.getcwd())
-    net = PointnetPlusSSG(config)
+    net = Pointnet(config)
     net = net.cuda()
     net.set_params()
     # exit()
