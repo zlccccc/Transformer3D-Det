@@ -20,7 +20,7 @@ def split_rel(input):
     #print('target shape', sub_one_hot_rel_target.shape)
     #print('id shape', sub_rel_idx.shape, sub_rel_idx[:, :, 0])
     #print('mask shape', sub_rel_mask.shape, sub_rel_mask[:, :, 0])
-    print('relation mask shape', multi_batch_rel_mask.shape, multi_batch_rel_mask)
+    #print('relation mask shape', multi_batch_rel_mask.shape, multi_batch_rel_mask)
 
     sum_num = multi_batch_rel_mask.sum().cpu()
     # print('checkpoint multi_batch_rel_mask in tran_sg')
@@ -54,7 +54,7 @@ def split_obj(input):
     # print('point shape', sub_object_points.shape)
     # print('target shape', sub_object_target.shape)
     # print('id shape', sub_object_idx.shape, sub_object_idx[:, :, 0])
-    print('object mask shape', multi_batch_object_mask.shape, multi_batch_object_mask)
+    #print('object mask shape', multi_batch_object_mask.shape, multi_batch_object_mask)
     sum_num = multi_batch_object_mask.sum().cpu()
     object_points = torch.zeros((sum_num, 1024, 3)).cuda()
     object_target = torch.zeros((sum_num, 1)).cuda()

@@ -1,15 +1,29 @@
+import torch
 
-def top_n_accuracy(output, target, topk=(1,)):
-    maxk = max(topk)
+def top_1_accurancy(output, target):
     batch_size = target.size(0)
-    _, pred = output.topk(maxk, 1, True, True)
+    _, pred = torch.max(output, dim=1)
     pred = pred.t()
     # print(pred.type())
     # print(rel_target.type())
+    correct = pred.eq(target.long().view(-1))
+    # print(output.shape, target.shape, pred.shape, correct.shape, '  <<<  acc shape')
+
+    accurancy = correct.float().mean()
+    return accurancy
+
+
+def top_n_accurancy(output, target, maxk=1):
+    batch_size = target.size(0)
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+    #print(output.shape, target.shape, pred.shape, pred.t().shape, '  <<<  topk acc shape')
+    # print(pred.type())
+    # print(rel_target.type())
     correct = pred.eq(target.long().view(1, -1).expand_as(pred))
-    for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
-        rel_top_n_single = correct_k.mul_(1.0 / batch_size).data.cpu().item()  # not right? why mean
+
+    correct_k = correct[:maxk].view(-1).float().sum(0)
+    rel_top_n_single = correct_k.mul_(1.0 / batch_size).data.cpu().item()  # not right? why mean
     return rel_top_n_single
 
 
@@ -42,9 +56,12 @@ def top_n_recall(output, target, maxk):  # recall ???
 
 def calculate_kth_error(predict, target, top_k, error_type='accurancy'):  # mean loss
     if error_type == 'accurancy':
-        return top_n_accuracy(predict, target, top_k)
+        return top_n_accurancy(predict, target, top_k)
     elif error_type == 'recall':
         return top_n_recall(predict, target, top_k)
+    elif error_type == 'top_accurancy':
+        assert top_k == 1
+        return top_1_accurancy(predict, target)
     else:
         raise NotImplementedError(error_type)
 

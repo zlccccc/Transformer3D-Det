@@ -4,11 +4,11 @@ common:
         objmodel:
             name: pointnet
             in_channel: 0
-            num_output: 27
+            num_output: 160
         relmodel:
             name: pointnet
             in_channel: 1
-            num_output: 160
+            num_output: 27
     logs:
         baselogger:
             path: log/log.txt

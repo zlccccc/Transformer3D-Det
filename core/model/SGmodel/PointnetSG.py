@@ -1,5 +1,4 @@
 import torch.nn as nn
-from torch.nn.functional as F
 from core.model.task_basemodel.backbone.base_model import base_module
 from core.model.Pointnet import model_entry
 from .utils import split_obj, split_rel
@@ -34,7 +33,7 @@ class PointNetSG(base_module):
             assert 'object_points' in input.keys(), 'dataloader should have "object points" object(or in utils.py)'
             # print('calculating object')
             output['obj_result'] = self.obj_module._forward({'point_set': input['object_points']})['value']
-        if self.rel_moudle is not None:
+        if self.rel_module is not None:
             assert 'rel_points' in input.keys(), 'dataloader should have "relationship" object(or in utils.py)'
             # print('calculating relationship')
             output['rel_result'] = self.rel_module._forward({'point_set': input['rel_points']})['value']
@@ -45,26 +44,26 @@ class PointNetSG(base_module):
             input = split_obj(input)
         if 'rel_point_set' in input.keys():
             input = split_rel(input)
-        print('relationship final keys', input.keys())
+        # print('relationship final keys', input.keys())
         return input
 
     def calculate_loss(self, input, output):
         loss = 0
         if self.rel_module is not None:
-            result, target = output['rel_result'], input['rel_target']
-            rel_loss = calculate_loss(result, target, self.rel_loss_type)
+            result, target = output['rel_result'], input['one_hot_rel_target']
+            rel_loss = calculate_loss(result, target, self.rel_loss_type) * 100  # weight
             output['rel_n_count'] = result.shape[0]
             output['rel_loss'] = rel_loss
             output['n_count'] = output['rel_n_count']
-            output['rel_top_1_acc_error'] = calculate_kth_error(result, target, 1, 'accurancy')
+            output['rel_top_1_acc(loss)'] = calculate_kth_error(result, target, 1, 'accurancy')
             loss += rel_loss
         if self.obj_module is not None:
-            result, target = output['obj_result'], input['obj_target']
-            obj_loss = calculate_loss(result, target, self.obj_loss_type)
+            result, target = output['obj_result'], input['object_target']
+            obj_loss = calculate_loss(result, target, self.obj_loss_type) * 100  # weight
             output['obj_n_count'] = result.shape[0]
             output['obj_loss'] = obj_loss
             output['n_count'] = output['obj_n_count']
-            output['obj_top_1_acc_loss'] = calculate_kth_error(result, target, 1, 'accurancy')
+            output['obj_top_1_acc(loss)'] = calculate_kth_error(result, target, 1, 'accurancy')
             loss += obj_loss
         output['loss'] = loss
         return output
@@ -72,21 +71,25 @@ class PointNetSG(base_module):
     def calculate_error(self, input, output):
         error = 1
         if self.rel_module is not None:
-            result, target = output['rel_result'], input['rel_target']
-            output['obj_top_1_acc_error'] = calculate_kth_error(result, target, 1, 'accurancy')
-            output['obj_top_3_acc_error'] = calculate_kth_error(result, target, 3, 'accurancy')
-            output['obj_top_5_acc_error'] = calculate_kth_error(result, target, 5, 'accurancy')
+            result, target = output['rel_result'], input['one_hot_rel_target']
+            output['obj_acc(error)'] = calculate_kth_error(result, target, 1, 'top_accurancy')
+            output['obj_top_1_acc(error)'] = calculate_kth_error(result, target, 1, 'accurancy')
+            output['obj_top_3_acc(error)'] = calculate_kth_error(result, target, 3, 'accurancy')
+            output['obj_top_5_acc(error)'] = calculate_kth_error(result, target, 5, 'accurancy')
             output['obj_n_count'] = result.shape[0]
-            error *= output['obj_top_1_acc_error']
+            error *= output['obj_top_1_acc(error)']
         if self.obj_module is not None:
-            result, target = output['obj_result'], input['obj_target']
-            output['rel_top_1_acc_error'] = calculate_kth_error(result, target, 1, 'accurancy')
-            output['rel_top_5_acc_error'] = calculate_kth_error(result, target, 5, 'accurancy')
-            output['rel_top_10_acc_error'] = calculate_kth_error(result, target, 10, 'accurancy')
+            result, target = output['obj_result'], input['object_target']
+            output['rel_acc(error)'] = calculate_kth_error(result, target, 1, 'top_accurancy')
+            output['rel_top_1_acc(error)'] = calculate_kth_error(result, target, 1, 'accurancy')
+            output['rel_top_5_acc(error)'] = calculate_kth_error(result, target, 5, 'accurancy')
+            output['rel_top_10_acc(error)'] = calculate_kth_error(result, target, 10, 'accurancy')
             output['rel_n_count'] = result.shape[0]
-            error *= output['rel_top_1_acc_error']
-        output['error'] = loss
-        raise NotImplementedError('error')
+            error *= output['rel_top_1_acc(error)']
+        output['error'] = 1 - error
+        output['n_count'] = 1
+        # TODO: error calculate not right (should not mean in batch)
+        return output
 
 
 if __name__ == "__main__":
