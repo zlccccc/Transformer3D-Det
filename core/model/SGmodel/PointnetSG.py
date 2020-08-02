@@ -20,9 +20,9 @@ class PointNetSG(base_module):
         # print(xyz.shape)
         output = {}
         if 'object_point_set' in input.keys():
-            output['obj_result'] = self.obj_module({'point_set': input['obj_point_set']})
+            output['obj_result'] = self.obj_module._forward({'point_set': input['object_points']})
         if 'rel_point_set' in input.keys():
-            output['rel_result'] = self.rel_module({'point_set': input['rel_point_set']})
+            output['rel_result'] = self.rel_module._forward({'point_set': input['rel_points']})
         return output
 
     def _before_forward(self, input):
@@ -36,9 +36,10 @@ class PointNetSG(base_module):
         loss = 0
         if 'rel_point_set' in input.keys():
             rel_loss = 0
+            loss += rel_loss
         if 'object_point_set' in input.keys():
-            input = split_obj(input)
-        loss += rel_loss
+            obj_loss = 0
+            loss += obj_loss
         # input['one_hot_rel_target'] = rel_mask
         # input['rel_mask'] = rel_mask
         # input['rel_points'] = rel_points  # splited

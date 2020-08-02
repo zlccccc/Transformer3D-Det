@@ -14,30 +14,30 @@ def split_rel(input):
     # print(sub_rel_target.size())
     # print(sub_rel_idx.size())
     # print(sub_rel_mask.size())
-    sum_num = sum(multi_batch_rel_mask.data.numpy())
-    multi_batch_rel_mask = multi_batch_rel_mask.data.numpy()
-    multi_batch_rel_mask = np.insert(multi_batch_rel_mask, 0, 0)
-    # print(sum_num)
-    # print('checkpoint multi_batch_rel_mask in tran_sg')
-    # print(multi_batch_rel_mask)
-    N = len(multi_batch_rel_mask)
-    rel_points = np.zeros((sum_num, 1024, 4))
-    one_hot_rel_target = np.zeros((sum_num, 27))
-    rel_idx = np.zeros((sum_num, 2))
-    rel_mask = np.zeros((sum_num, 1))
 
-    for i in range(0, N - 1):
-        start_idx = sum(multi_batch_rel_mask[:i + 1])
-        end_idx = sum(multi_batch_rel_mask[:i + 2])
+    # for relationship split
+    print('point shape', sub_rel_points.shape)
+    print('target shape', sub_one_hot_rel_target.shape)
+    print('id shape', sub_rel_idx.shape, sub_rel_idx[:, :, 0])
+    print('mask shape', sub_rel_mask.shape, sub_rel_mask[:, :, 0])
+    print('mask shape', multi_batch_rel_mask.shape, multi_batch_rel_mask)
+
+    sum_num = multi_batch_rel_mask.sum().cpu()
+    # print('checkpoint multi_batch_rel_mask in tran_sg')
+
+    N = len(multi_batch_rel_mask)
+    rel_points = torch.zeros((sum_num, 1024, 4)).cuda()
+    one_hot_rel_target = torch.zeros((sum_num, 27)).cuda()
+    rel_idx = torch.zeros((sum_num, 2)).cuda()
+    rel_mask = torch.zeros((sum_num, 1)).cuda()
+    for i in range(N):
+        start_idx = multi_batch_rel_mask[:i].sum().cpu()
+        end_idx = multi_batch_rel_mask[:i + 1].sum().cpu()
         # print(start_idx, end_idx)
-        rel_points[start_idx:end_idx, :, :] = sub_rel_points.data.numpy()[i, :end_idx - start_idx, :, :]
-        one_hot_rel_target[start_idx:end_idx, :] = sub_one_hot_rel_target.data.numpy()[i, :end_idx - start_idx, :]
-        rel_idx[start_idx:end_idx, :] = sub_rel_idx.data.numpy()[i, :end_idx - start_idx, :]
-        rel_mask[start_idx:end_idx, :] = sub_rel_mask.data.numpy()[i, :end_idx - start_idx, :]
-    one_hot_rel_target = torch.Tensor(one_hot_rel_target)
-    rel_mask = torch.Tensor(rel_mask)
-    rel_points = torch.Tensor(rel_points)
-    rel_idx = torch.Tensor(rel_idx)
+        rel_points[start_idx:end_idx, :, :] = sub_rel_points[i, :end_idx - start_idx, :, :]
+        one_hot_rel_target[start_idx:end_idx, :] = sub_one_hot_rel_target[i, :end_idx - start_idx, :]
+        rel_idx[start_idx:end_idx, :] = sub_rel_idx[i, :end_idx - start_idx, :]
+        rel_mask[start_idx:end_idx, :] = sub_rel_mask[i, :end_idx - start_idx, :]
     input['one_hot_rel_target'] = rel_mask
     input['rel_mask'] = rel_mask
     input['rel_points'] = rel_points  # splited
@@ -50,30 +50,24 @@ def split_obj(input):
     sub_object_target = input['object_cls']
     sub_object_idx = input['object_idx']
     multi_batch_object_mask = input['multi_batch_object_mask']
-
-    sum_num = sum(multi_batch_object_mask.data.numpy())
-    # print('checkpoint multi_batch_object_mask in train_sg')
-    # print(multi_batch_object_mask)
-    object_points = np.zeros((sum_num, 1024, 3))
-    object_target = np.zeros((sum_num, 1))
-    object_idx = np.zeros((sum_num, 1))
-    multi_batch_object_mask = multi_batch_object_mask.data.numpy()
-    multi_batch_object_mask = np.insert(multi_batch_object_mask, 0, 0)
-    # print(multi_batch_object_mask)
+    # for obj split
+    # print('point shape', sub_object_points.shape)
+    # print('target shape', sub_object_target.shape)
+    # print('id shape', sub_object_idx.shape, sub_object_idx[:, :, 0])
+    # print('mask shape', multi_batch_object_mask.shape, multi_batch_object_mask)
+    sum_num = multi_batch_object_mask.sum().cpu()
+    object_points = torch.zeros((sum_num, 1024, 3)).cuda()
+    object_target = torch.zeros((sum_num, 1)).cuda()
+    object_idx = torch.zeros((sum_num, 1)).cuda()
     N = len(multi_batch_object_mask)
-    # print(sub_object_points.shape)
-    # print(sub_object_target.shape)
-    # print(sub_object_idx.shape)
-    for i in range(0, N - 1):
-        start_idx = sum(multi_batch_object_mask[:i + 1])
-        end_idx = sum(multi_batch_object_mask[:i + 2])
-        # print(start_idx, end_idx)
-        object_points[start_idx:end_idx, :, :] = sub_object_points.data.numpy()[i, :end_idx - start_idx, :, :]
-        object_target[start_idx:end_idx, :] = sub_object_target.data.numpy()[i, :end_idx - start_idx, :]
-        object_idx[start_idx:end_idx, :] = sub_object_idx.data.numpy()[i, :end_idx - start_idx, :]
-    object_target = torch.Tensor(object_target)
-    object_points = torch.Tensor(object_points)
-    object_idx = torch.Tensor(object_idx)
+    for i in range(N):
+        start_idx = multi_batch_object_mask[:i].sum().cpu()
+        end_idx = multi_batch_object_mask[:i + 1].sum().cpu()
+        # print('get: ',start_idx, end_idx) # for testing; test okay
+        object_points[start_idx:end_idx, :, :] = sub_object_points[i, :end_idx - start_idx, :, :]
+        object_target[start_idx:end_idx, :] = sub_object_target[i, :end_idx - start_idx, :]
+        object_idx[start_idx:end_idx,:] = sub_object_idx[i,:end_idx - start_idx,:]
+    print('final', object_target.shape, object_points.shape, object_idx[:, 0])
     input['object_target'] = object_target
     input['object_points'] = object_points  # splited
     input['object_idx'] = object_idx

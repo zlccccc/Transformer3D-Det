@@ -2,11 +2,11 @@ common:
     model:
         name: pointnetSG 
         objmodel:
-            name: pointnet
+            name: pointnet++2
             in_channel: 0
             num_output: 27
         relmodel:
-            name: pointnet
+            name: pointnet++2
             in_channel: 1
             num_output: 160
     logs:
@@ -21,7 +21,7 @@ common:
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
-    batch_size: 2
+    batch_size: 1
     workers: 0
     dataset:
         name: 3DSSGDataset

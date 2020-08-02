@@ -1,4 +1,5 @@
 from .sampling_utils import *
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -45,7 +46,10 @@ class PointNetFeature(nn.Module):
             new_features: feature, [B, S]
         """
         B, N, C = xyz.shape
-        features = torch.cat([xyz, features], dim=-1)
+        if features is None:
+            features = xyz
+        else:
+            features = torch.cat([xyz, features], dim=-1)
         # print('shape', features.shape)  # [B, N, C+D]
         features = features.permute(0, 2, 1)  # [B, C+D, N, 1]
         features = features.view(B, -1, N, 1)

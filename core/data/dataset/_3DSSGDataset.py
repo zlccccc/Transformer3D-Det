@@ -129,7 +129,7 @@ class PCSGDataset(Dataset):
             object_point_set = np.zeros((9, self.npoints, 3))
             object_cls = np.zeros((9, 1))
             object_idx = np.zeros((9, 1))
-            multi_batch_object_mask = np.zeros((1))
+            # multi_batch_object_mask = np.zeros((1)) # no use
             multi_batch_object_mask = object_num
             # print('chcek point object mask in Dataloader')
             # print(multi_batch_object_mask)
@@ -157,7 +157,7 @@ class PCSGDataset(Dataset):
             rel_keys = list(sg_data['rel'].keys())
             rel_num = len(rel_keys)
             # print(rel_num)
-            rel_point_set = np.zeros((72, self.npoints, 4))  # maximum 
+            rel_point_set = np.zeros((72, self.npoints, 4))  # maximum
             rel_cls_one_hot = np.zeros((72, 27))
             rel_mask = np.ones((72, 1))
             rel_idx = np.zeros((72, 2))
