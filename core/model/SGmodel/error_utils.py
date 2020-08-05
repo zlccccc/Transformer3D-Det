@@ -41,7 +41,7 @@ def top_n_recall(output, target, maxk):  # recall ???
     return ave_recall_n
 
 
-def calculate_recall_per_edge(object_idx, object_predict, object_target, rel_idx, rel_mask, rel_predict, one_hot_rel_target, maxk):
+def calculate_recall_per_edge(object_predict, object_target, rel_predict, one_hot_rel_target, object_idx, rel_idx, rel_mask, maxk):
     # one_hot_rel_target, rel_idx, rel_mask, object_idx, object_target, softmax_object_x, softmax_rel_x,  prediction_recall=50
     # print(rel_mask)
     # print(select_idx)
@@ -50,12 +50,13 @@ def calculate_recall_per_edge(object_idx, object_predict, object_target, rel_idx
     # print(softmax_object_x.size())
     object_predict = F.softmax(object_predict)
     rel_predict = F.sigmoid(rel_predict)  # should? todo checkit
+    #print(object_predict.shape, rel_predict.shape, rel_idx.shape)
 
     recall_per_edge = []
     for i in range(len(rel_idx)):
         #  for one edge
         rel_pred = rel_predict[i]  # in this option
-        rel_gt = (one_hot_rel_target == 1)
+        rel_gt = (one_hot_rel_target[i] == 1)
         # get sub and obj id
         sub_id = rel_idx[i][0]
         obj_id = rel_idx[i][1]
@@ -67,8 +68,9 @@ def calculate_recall_per_edge(object_idx, object_predict, object_target, rel_idx
         obj_index = torch.where(object_idx == obj_id)
         obj_gt = object_target[obj_index]
         obj_pred = object_predict[obj_index]
+        print(object_idx, obj_index, sub_index, sub_id, obj_id, '   <<<    subindex')
 
-        print(sub_gt.shape, sub_pred.shape, obj_gt.shape, obj_pred.shape, rel_pred.shape, rel_gt.shape, '   <<<<<<<<<<< sub and obj shape')
+        print(sub_gt.shape, sub_pred.shape, obj_gt.shape, obj_pred.shape, 'rel', rel_pred.shape, rel_gt.shape, '   <<<<<<<<<<< sub and obj shape')
         # for object:
         #   correct = pred.eq(target.long().view(1, -1).expand_as(pred))
         #   correct_k = correct[:maxk].view(-1).float().sum(0)
@@ -78,8 +80,9 @@ def calculate_recall_per_edge(object_idx, object_predict, object_target, rel_idx
         #   pred_onehot = pred_onehot.sum(dim=0).float()
         #   recall_n = (pred_onehot * target).sum(dim=-1).float() / target.sum(dim=-1).float()
         #   ave_recall_n = recall_n.sum() / batch_size
-        pred_relation = torch.mm(obj_pred.unsqueeeze(1), sub_pred.unsqueeze(0))
-        pred_relation = torch.mm(pred_relation.unsqueeeze(2), rel_pred.unsqueeze(0))
+        pred_relation = torch.mm(obj_pred.unsqueeze(1), sub_pred.unsqueeze(0))
+        print(obj_pred.unsqueeze(1).shape, pred_relation.shape)
+        pred_relation = torch.mm(pred_relation.unsqueeze(2), rel_pred.unsqueeze(0))
         print(pred_relation.shape)
         pred_relation = pred_relation.view(-1)
         _, pred_id = pred_relation.topk(maxk, 1, True, True)
