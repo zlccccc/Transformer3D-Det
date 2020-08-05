@@ -2,6 +2,7 @@
 # Downloads 3RScan public data release
 # Run with ./download.py (or python download-scannet.py on Windows)
 # -*- coding: utf-8 -*-
+# must load 'labels.instances.annotated.ply' ; need vpn
 
 import sys
 import argparse

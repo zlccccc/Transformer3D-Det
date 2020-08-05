@@ -3,7 +3,7 @@ from core.model.task_basemodel.backbone.base_model import base_module
 from core.model.Pointnet import model_entry
 from .utils import split_obj, split_rel
 from .loss_utils import calculate_loss
-from .error_utils import calculate_kth_error
+from .error_utils import calculate_kth_error, calculate_recall_per_edge
 
 
 class PointNetSG(base_module):
@@ -50,8 +50,7 @@ class PointNetSG(base_module):
     def calculate_loss(self, input, output):
         loss = 0
         if self.rel_module is not None:
-            result, target = output['rel_result'], input['one_hot_rel_target']
-            # result, target = output['rel_result'], input['one_hot_rel_target']  # one_hot_target
+            result, target = output['rel_result'], input['one_hot_rel_target']  # one_hot_target
             rel_loss = calculate_loss(result, target, self.rel_loss_type) * 100  # weight
             output['rel_n_count(loss)'] = result.shape[0]
             output['rel_loss'] = rel_loss
@@ -89,6 +88,7 @@ class PointNetSG(base_module):
                 output['recall_number(error)'] = 0
                 # print('DONE testing relation', result.shape, target.shape)
             output['rel_n_count(error)'] = result.shape[0]
+            rel_predict, one_hot_rel_target = result, target
             error *= output['all_rel_top_1_recall(error)']
         if self.obj_module is not None:
             result, target = output['obj_result'], input['object_target']
@@ -97,7 +97,17 @@ class PointNetSG(base_module):
             output['obj_top_5_acc(error)'] = calculate_kth_error(result, target, 5, 'accurancy')
             output['obj_top_10_acc(error)'] = calculate_kth_error(result, target, 10, 'accurancy')
             output['obj_n_count(error)'] = result.shape[0]
+            object_predict, object_target = result, target
             error *= output['obj_top_1_acc(error)']
+        if self.rel_module is not None and self.obj_module is not None:
+            # calculate all error
+            # (object_predict, object_target), (rel_predict, one_hot_rel_target), object_idx, rel_idx, rel_mask, maxk
+            object_idx, rel_idx, rel_mask = input['object_idx'], input['rel_idx'], input['rel_mask']
+            output['edge_acc_50(error)'] = calculate_recall_per_edge(object_predict, object_target, rel_predict,
+                                                                     one_hot_rel_target, object_idx, rel_idx, rel_mask, 50)
+            output['edge_acc_100(error)'] = calculate_recall_per_edge(object_predict, object_target, rel_predict,
+                                                                      one_hot_rel_target, object_idx, rel_idx, rel_mask, 100)
+            error = output['edge_acc_100(error)']
         output['error'] = 1 - error
         output['n_count'] = 1
         # TODO: error calculate not right (should not mean in batch)
