@@ -3,6 +3,7 @@ from plyfile import PlyData, PlyElement
 import numpy as np
 import time
 import copy
+import os
 import numpy as np
 
 
@@ -86,11 +87,13 @@ def label_rel_point_cloud(points_inside_box, selected_point_clouds, subject_unit
     return labeled_rel_point_cloud
 
 
-root = '/home/zzha5029/datasets/'
+root = '/data1/zhaolichen/data'
 split = 'train'
 # split = 'validation'
 
 save_root_dir = root + '/3DSSG/cropped_point_cloud/'
+if not os.path.exists(save_root_dir):
+    os.makedirs(save_root_dir)
 
 # Load relationship JSON file
 f = open(root + '/3DSSG/3DSSG_subset/relationships_%s.json' % split)
@@ -113,7 +116,7 @@ print(train_subgraph_num)
 # print(len(data['scans'][graph_id]['objects']))
 
 # get the number of objects and relationships in each graph
-for graph_id in range(0, 1000):
+for graph_id in range(0, train_subgraph_num):
     print('process the No.' + str(graph_id) + ' subgraph.')
 
     rel_len = len(data['scans'][graph_id]['relationships'])
@@ -126,6 +129,11 @@ for graph_id in range(0, 1000):
 
     # load point cloud data
     root_dir = root + '/3RScan/' + data['scans'][graph_id]['scan'] + '/'
+    plypath = root_dir + 'labels.instances.annotated.ply'
+    print(plypath)
+    if not os.path.exists(plypath):
+        print('path %s not exist!', plypath)
+        continue
     plydata = PlyData.read(root_dir + 'labels.instances.annotated.ply')
     # print(plydata.elements[0].properties)
     point_cloud_num = len(plydata.elements[0]['objectId'])
@@ -161,9 +169,14 @@ for graph_id in range(0, 1000):
             selected_point_clouds[pc_objectID].append([x, y, z])
 
     # calculate the bounding box for each object
+    real_pc_ids = []
     for selected_pc_id in object_ids:
         # print(bbox)
         point_cloud_data = np.array(selected_point_clouds[selected_pc_id])
+        # print(point_cloud_data.shape)
+        if len(point_cloud_data) == 0: 
+           continue
+        real_pc_ids.append(selected_pc_id)
         object_name = data['scans'][graph_id]['objects'][selected_pc_id]
         bbox = np.zeros((3, 2))
         max_value = np.max(point_cloud_data, axis=0)
@@ -183,6 +196,7 @@ for graph_id in range(0, 1000):
         # print(file_name)
         #pred_pc = point_cloud_data[:,:3]
         # np.savetxt(save_root_dir+file_name,pred_pc,fmt='%.6f')
+    object_ids = real_pc_ids
 
     rel_point_clouds = {}
     start_time = time.time()
@@ -223,6 +237,9 @@ for graph_id in range(0, 1000):
     subgraph_all['object'] = objects_point_clouds
     subgraph_all['rel'] = rel_point_clouds
 
-    file_name = save_root_dir + split + str(graph_id).zfill(4) + '.json'
+    file_name = save_root_dir + split + '/'
+    if not os.path.exists(file_name):
+        os.makedirs(file_name)
+    file_name = file_name + str(graph_id).zfill(4) + '.json'
     with open(file_name, 'w') as outfile:
         json.dump(data, outfile)
