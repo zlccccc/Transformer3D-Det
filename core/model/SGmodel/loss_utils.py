@@ -59,11 +59,11 @@ def calculate_loss(predict, target, loss_type):  # mean loss
     if loss_type == 'cross_entropy':
         object_loss = F.cross_entropy(predict, target.long())
     elif loss_type == 'focal_loss':
-        #print('calculate loss: shape', predict.shape, target.shape)
+        # print('calculate loss: shape', predict.shape, target.shape)
         if predict.shape != target.shape:
             target = F.one_hot(target.long(), num_classes=predict.shape[-1])
             target = target.reshape(predict.shape)
-        #print('onehot_done, calculate loss: shape', predict.shape, target.shape)
+        # print('onehot_done, calculate loss: shape', predict.shape, target.shape)
         object_loss = sigmoid_focal_loss(predict, target)
     else:
         raise NotImplementedError(loss_type)

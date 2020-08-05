@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 def top_1_accurancy(output, target):
     batch_size = target.size(0)
@@ -6,6 +7,7 @@ def top_1_accurancy(output, target):
     pred = pred.t()
     # print(pred.type())
     # print(rel_target.type())
+    # print(pred, target.view(-1))
     correct = pred.eq(target.long().view(-1))
     # print(output.shape, target.shape, pred.shape, correct.shape, '  <<<  acc shape')
 
@@ -28,6 +30,8 @@ def top_n_accurancy(output, target, maxk=1):
 
 
 def top_n_recall(output, target, maxk):  # recall ???
+    # print('calculating recall', output.shape, target.shape, maxk)
+    # output = F.softmax(output)
     batch_size = target.size(0)
     _, pred = output.topk(maxk, 1, True, True)
     # print(output[-5])
@@ -35,8 +39,8 @@ def top_n_recall(output, target, maxk):  # recall ???
     # print(pred[-5])
     pred = pred.t()
     #print('pred with t')
-    # print(pred[:,0])
-    pred_onehot = F.one_hot(pred, num_classes=27)
+    #print(pred[:, 0])
+    pred_onehot = F.one_hot(pred, num_classes=output.shape[-1])
     # print(pred_onehot.size())
     pred_onehot = pred_onehot.sum(dim=0).float()
 
@@ -51,7 +55,8 @@ def top_n_recall(output, target, maxk):  # recall ???
     # print(recall_n.size())
     ave_recall_n = recall_n.sum() / batch_size
     # print(ave_recall_n)
-    return recall_n, ave_recall_n
+    # print(recall_n.shape, ave_recall_n)
+    return ave_recall_n
 
 
 def calculate_kth_error(predict, target, top_k, error_type='accurancy'):  # mean loss

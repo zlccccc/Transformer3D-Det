@@ -2,11 +2,11 @@ common:
     model:
         name: pointnetSG 
         objmodel:
-            name: pointnet++2
-            in_channel: 3
-            num_output: 150
+            name: pointnet
+            in_channel: 0
+            num_output: 160
         relmodel:
-            name: pointnet++2
+            name: pointnet
             in_channel: 1
             num_output: 27
     logs:
@@ -17,16 +17,18 @@ common:
     snapshot:
         save_path: snapshot
     load:
-        load: False
+        load: True
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
-    batch_size: 3
-    workers: 6
+    batch_size: 6
+    workers: 4
     dataset:
         name: 3DSSGDataset
         split: train
+        #root: /data1/zhaolichen/data/3DSSG_test
         root: /data1/zzha5029/datasets/3DSSG/lighter_point_cloud
+        #root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
         npoint: 1024
     optimizer:
         name: Adam
@@ -43,16 +45,18 @@ train:
         name: iteration
         max_iter: 80000
         # test and save
-        test_freq: 1000
+        test_freq: 500
         save_freq: 10000
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 24
-    workers: 6
+    batch_size: 6
+    workers: 4
     dataset:
         testset:
             name: 3DSSGDataset
             split: val
+            #root: /data1/zhaolichen/data/3DSSG_test
             root: /data1/zzha5029/datasets/3DSSG/lighter_point_cloud
+            #root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
             npoint: 1024

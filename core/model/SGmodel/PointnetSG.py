@@ -51,18 +51,19 @@ class PointNetSG(base_module):
         loss = 0
         if self.rel_module is not None:
             result, target = output['rel_result'], input['one_hot_rel_target']
+            # result, target = output['rel_result'], input['one_hot_rel_target']  # one_hot_target
             rel_loss = calculate_loss(result, target, self.rel_loss_type) * 100  # weight
-            output['rel_n_count'] = result.shape[0]
+            output['rel_n_count(loss)'] = result.shape[0]
             output['rel_loss'] = rel_loss
-            output['n_count'] = output['rel_n_count']
-            output['rel_top_1_acc(loss)'] = calculate_kth_error(result, target, 1, 'accurancy')
+            output['n_count'] = output['rel_n_count(loss)']
+            output['all_rel_top_1_recall(loss)'] = calculate_kth_error(result, target, 1, 'recall')
             loss += rel_loss
         if self.obj_module is not None:
             result, target = output['obj_result'], input['object_target']
             obj_loss = calculate_loss(result, target, self.obj_loss_type) * 100  # weight
-            output['obj_n_count'] = result.shape[0]
+            output['obj_n_count(loss)'] = result.shape[0]
             output['obj_loss'] = obj_loss
-            output['n_count'] = output['obj_n_count']
+            output['n_count'] = output['obj_n_count(loss)']
             output['obj_top_1_acc(loss)'] = calculate_kth_error(result, target, 1, 'accurancy')
             loss += obj_loss
         output['loss'] = loss
@@ -72,20 +73,31 @@ class PointNetSG(base_module):
         error = 1
         if self.rel_module is not None:
             result, target = output['rel_result'], input['one_hot_rel_target']
-            output['obj_acc(error)'] = calculate_kth_error(result, target, 1, 'top_accurancy')
-            output['obj_top_1_acc(error)'] = calculate_kth_error(result, target, 1, 'accurancy')
-            output['obj_top_3_acc(error)'] = calculate_kth_error(result, target, 3, 'accurancy')
-            output['obj_top_5_acc(error)'] = calculate_kth_error(result, target, 5, 'accurancy')
-            output['obj_n_count'] = result.shape[0]
-            error *= output['obj_top_1_acc(error)']
+            output['all_rel_top_1_recall(error)'] = calculate_kth_error(result, target, 5, 'recall')
+            rel_mask = input['rel_mask']
+            if rel_mask.sum() != 0:
+                mask = (rel_mask == 1)[:, 0]
+                # print('mask', mask.shape)
+                result = result[mask, 1:]
+                target = target[mask, 1:]
+                # print('testing relation', result.shape, target.shape)
+                output['rel_top_1_recall(error)'] = calculate_kth_error(result, target, 1, 'recall')
+                output['rel_top_3_recall(error)'] = calculate_kth_error(result, target, 3, 'recall')
+                output['rel_top_5_recall(error)'] = calculate_kth_error(result, target, 5, 'recall')
+                output['recall_number(error)'] = 1
+            else:
+                output['recall_number(error)'] = 0
+                # print('DONE testing relation', result.shape, target.shape)
+            output['rel_n_count(error)'] = result.shape[0]
+            error *= output['all_rel_top_1_recall(error)']
         if self.obj_module is not None:
             result, target = output['obj_result'], input['object_target']
-            output['rel_acc(error)'] = calculate_kth_error(result, target, 1, 'top_accurancy')
-            output['rel_top_1_acc(error)'] = calculate_kth_error(result, target, 1, 'accurancy')
-            output['rel_top_5_acc(error)'] = calculate_kth_error(result, target, 5, 'accurancy')
-            output['rel_top_10_acc(error)'] = calculate_kth_error(result, target, 10, 'accurancy')
-            output['rel_n_count'] = result.shape[0]
-            error *= output['rel_top_1_acc(error)']
+            output['obj_acc(error)'] = calculate_kth_error(result, target, 1, 'top_accurancy')
+            output['obj_top_1_acc(error)'] = calculate_kth_error(result, target, 1, 'accurancy')
+            output['obj_top_5_acc(error)'] = calculate_kth_error(result, target, 5, 'accurancy')
+            output['obj_top_10_acc(error)'] = calculate_kth_error(result, target, 10, 'accurancy')
+            output['obj_n_count(error)'] = result.shape[0]
+            error *= output['obj_top_1_acc(error)']
         output['error'] = 1 - error
         output['n_count'] = 1
         # TODO: error calculate not right (should not mean in batch)

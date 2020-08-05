@@ -38,7 +38,7 @@ def split_rel(input):
         one_hot_rel_target[start_idx:end_idx, :] = sub_one_hot_rel_target[i, :end_idx - start_idx, :]
         rel_idx[start_idx:end_idx, :] = sub_rel_idx[i, :end_idx - start_idx, :]
         rel_mask[start_idx:end_idx, :] = sub_rel_mask[i, :end_idx - start_idx, :]
-    input['one_hot_rel_target'] = rel_mask
+    input['one_hot_rel_target'] = one_hot_rel_target
     input['rel_mask'] = rel_mask
     input['rel_points'] = rel_points  # splited
     input['rel_idx'] = rel_idx
