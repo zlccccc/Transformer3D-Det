@@ -26,8 +26,8 @@ train:
     dataset:
         name: 3DSSGDataset
         split: train
-        root: /data1/zhaolichen/data/3DSSG_test
-        #root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
+        # root: /data1/zhaolichen/data/3DSSG_test
+        root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
         npoint: 1024
     optimizer:
         name: Adam
@@ -55,6 +55,6 @@ test:
         testset:
             name: 3DSSGDataset
             split: val
-            root: /data1/zhaolichen/data/3DSSG_test
-            #root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
+            # root: /data1/zhaolichen/data/3DSSG_test
+            root: C:\Users\ZLC\Desktop\pycodes\data\3DSSG_test
             npoint: 1024

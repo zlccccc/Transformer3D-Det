@@ -102,11 +102,10 @@ class PointNetSG(base_module):
         if self.rel_module is not None and self.obj_module is not None:
             # calculate all error
             # (object_predict, object_target), (rel_predict, one_hot_rel_target), object_idx, rel_idx, rel_mask, maxk
-            object_idx, rel_idx, rel_mask = input['object_idx'], input['rel_idx'], input['rel_mask']
             output['edge_acc_50(error)'] = calculate_recall_per_edge(object_predict, object_target, rel_predict,
-                                                                     one_hot_rel_target, object_idx, rel_idx, rel_mask, 50)
+                                                                     one_hot_rel_target, input, 50)
             output['edge_acc_100(error)'] = calculate_recall_per_edge(object_predict, object_target, rel_predict,
-                                                                      one_hot_rel_target, object_idx, rel_idx, rel_mask, 100)
+                                                                      one_hot_rel_target, input, 100)
             error = output['edge_acc_100(error)']
         output['error'] = 1 - error
         output['n_count'] = 1
