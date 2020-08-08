@@ -32,6 +32,9 @@ def main():
     with open(args.config, encoding='utf-8') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     config = EasyDict(config)
+    if args.test:
+        config.train.runner.name = 'test'
+        config.common.load.load=True
     loggers = Loggers(config.common.logs)
     loggers.update_loss({'args_out': args, 'config_out': config}, True)
 
@@ -83,8 +86,6 @@ def main():
         'model': model,
         'last_iter': last_iter,
     }
-    if args.test:
-        config.train.runner.name = 'test'
     runner = getrunner(config.train.runner)
     runner(info)
 

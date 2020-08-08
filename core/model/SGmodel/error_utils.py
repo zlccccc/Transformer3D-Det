@@ -48,8 +48,9 @@ def calculate_recall_per_edge(object_predict, object_target, rel_predict, one_ho
     # print(object_target.size())
     # print(object_idx.size())
     # print(softmax_object_x.size())
-    rel_predict = rel_predict[:, 1:]
-    one_hot_rel_target = one_hot_rel_target[:, 1:]
+    # REMOVE ZERO EDGE
+    #rel_predict = rel_predict[:, 1:]
+    #one_hot_rel_target = one_hot_rel_target[:, 1:]
     object_predict = F.softmax(object_predict)
     rel_predict = F.sigmoid(rel_predict)  # should? todo checkit
     #print(object_predict.shape, rel_predict.shape, rel_idx.shape)
@@ -85,11 +86,12 @@ def calculate_recall_per_edge(object_predict, object_target, rel_predict, one_ho
         #     start_idx = multi_batch_object_mask[:i].sum().cpu()
         for id in range(multi_batch_rel_mask[i]):
             if rel_mask_scene[id] == 0:
-                assert rel_tar_scene[id].sum() == 0, 'relation mask count not right'
+                #assert rel_tar_scene[id].sum() == 0, 'relation mask count not right'
                 # print(rel_tar_scene[id].sum())
                 continue
             else:
-                assert rel_tar_scene[id].sum() != 0, 'relation count not right'
+                #assert rel_tar_scene[id].sum() != 0, 'relation count not right'
+                pass
             #  for one edge
             rel_pred = rel_pred_scene[id]  # in this option
             rel_gt = rel_tar_scene[id]
