@@ -88,7 +88,6 @@ class PointNetSG(base_module):
                 output['recall_number(error)'] = 0
                 # print('DONE testing relation', result.shape, target.shape)
             output['rel_n_count(error)'] = result.shape[0]
-            rel_predict, one_hot_rel_target = result, target
             error *= output['all_rel_top_1_recall(error)']
         if self.obj_module is not None:
             result, target = output['obj_result'], input['object_target']
@@ -102,6 +101,7 @@ class PointNetSG(base_module):
         if self.rel_module is not None and self.obj_module is not None:
             # calculate all error
             # (object_predict, object_target), (rel_predict, one_hot_rel_target), object_idx, rel_idx, rel_mask, maxk
+            rel_predict, one_hot_rel_target = output['rel_result'], input['one_hot_rel_target']
             output['edge_acc_50(error)'] = calculate_recall_per_edge(object_predict, object_target, rel_predict,
                                                                      one_hot_rel_target, input, 50)
             output['edge_acc_100(error)'] = calculate_recall_per_edge(object_predict, object_target, rel_predict,
