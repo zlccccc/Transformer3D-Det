@@ -17,12 +17,13 @@ common:
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
-    batch_size: 2
-    workers: 0
+    batch_size: 16
+    workers: 4
     dataset:
         name: ShapeNetDataset
         split: trainval
-        root: C:\Users\ZLC\Desktop\pycodes\data\shapenetcore_partanno_segmentation_benchmark_v0_normal
+        root: /data1/zhaolichen/data/shapenetcore_partanno_segmentation_benchmark_v0_normal
+        #root: C:\Users\ZLC\Desktop\pycodes\data\shapenetcore_partanno_segmentation_benchmark_v0_normal
         npoint: 2048
         normal_channel: True
     optimizer:
@@ -45,12 +46,13 @@ train:
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 2
-    workers: 0
+    batch_size: 16
+    workers: 4
     dataset:
         testset:
             name: ShapeNetDataset
             split: test
-            root: C:\Users\ZLC\Desktop\pycodes\data\shapenetcore_partanno_segmentation_benchmark_v0_normal
+            root: /data1/zhaolichen/data/shapenetcore_partanno_segmentation_benchmark_v0_normal
+            #root: C:\Users\ZLC\Desktop\pycodes\data\shapenetcore_partanno_segmentation_benchmark_v0_normal
             npoint: 2048
             normal_channel: True
