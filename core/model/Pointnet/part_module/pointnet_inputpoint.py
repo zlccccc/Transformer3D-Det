@@ -1,16 +1,16 @@
-from models.part_module.sampling_utils import *
+from .sampling_utils import index_points, query_ball_point
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-# F0016_DI02WH_F3D.obj is wrong; (maybe eps not okay)
-class PointNetMSGChosenPReLU(nn.Module):
-    def __init__(self, radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d=nn.BatchNorm2d):
-        super(PointNetMSGChosenPReLU, self).__init__()
+class PointNetMSGInputPoint(nn.Module):
+    def __init__(self, radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d=nn.BatchNorm2d, ini_feature=0):
+        super(PointNetMSGInputPoint, self).__init__()
         self.radius_list = radius_list
         self.nsample_list = nsample_list
         self.conv_blocks = nn.ModuleList()
-        last_channel_all = 0
+        last_channel_all = ini_feature
         for i in range(len(mlp_list)):
             convs = []  # nn.conv2d(1,1):second channel
             last_channel = in_channel + 3
@@ -30,27 +30,33 @@ class PointNetMSGChosenPReLU(nn.Module):
             last_channel_all = out_channel
         self.conv_last = nn.Sequential(*self.conv_last)
 
-    def forward(self, xyz, new_xyz, features=None):
+    def forward(self, xyz, new_xyz, features=None, new_features=None):
         """
         Input:
             xyz: input points position data, [B, N, C]
             features: input points features, [B, N, D]
-        Return:
             new_xyz: sampled points position data, [B, S, C]
             new_features: sample points feature data, [B, S, D']
+        Return:
+            new_features: final features
         """
         B, N, C = xyz.shape
         S = new_xyz.shape[1]
         # torch.cuda.empty_cache()
         # print(new_xyz, new_xyz.shape)
-        new_features_list = []
+        if new_features is not None:
+            new_features_list = [new_features.permute(0, 2, 1)]
+        else:
+            new_features_list = []
         for i, radius in enumerate(self.radius_list):
             # get k points and their features
             K = self.nsample_list[i]
             # torch.cuda.empty_cache()
             group_idx = query_ball_point(radius, K, xyz, new_xyz)
             # torch.cuda.empty_cache()
-            grouped_xyz = index_points(xyz, group_idx).detach()
+            # print(group_idx)
+            # print(np.max(group_idx), np.min(group_idx), xyz.shape, group_idx)
+            grouped_xyz = index_points(xyz, group_idx)
             grouped_xyz -= new_xyz.view(B, S, 1, C)
             if features is not None:
                 grouped_points = index_points(features, group_idx)
@@ -68,15 +74,16 @@ class PointNetMSGChosenPReLU(nn.Module):
             # print('new_features:', new_features.shape)
             new_features_list.append(new_features)  # like pointnet
 
+        # for _ in new_features_list:
+        #     print(_.shape)
         new_features = torch.cat(new_features_list, dim=1)  # for fewer reshape and permute
         # print(new_features.shape)
         B, D, N = new_features.shape
         # new_features = new_features.view(B, D, N)
         # new_features = new_features.permute(0,)
         new_features = self.conv_last(new_features)
+        # new_features = new_features.view(B, -1, N)
+        # print(new_features.shape)
         new_features = new_features.permute(0, 2, 1)
         # print(new_features.shape, new_xyz.shape)
-        return new_xyz, new_features
-
-if __name__ == "__main__":
-    import sys
+        return new_features

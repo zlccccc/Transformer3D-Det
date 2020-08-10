@@ -1,6 +1,7 @@
 import torch
 
 
+# FOR DISTANCE
 def square_distance(src, dst):
     """
     dist = (xn - xm)^2 + (yn - ym)^2 + (zn - zm)^2
@@ -19,6 +20,7 @@ def square_distance(src, dst):
     return dist
 
 
+# FOR SAMPLING
 def farthest_point_sample(xyz, npoint):  # too slow!
     """
     Input:
@@ -43,6 +45,14 @@ def farthest_point_sample(xyz, npoint):  # too slow!
     return centroids
 
 
+def random_point_sample(xyz, npoint):
+    ret = torch.zeros([xyz.shape[0], npoint]).long()
+    for _ in range(xyz.shape[0]):
+        ret[_] = torch.randperm(xyz.shape[1])[:npoint]
+    return ret
+
+
+# FOR INDEXING
 def index_points(points, idx):
     """
     Input:
@@ -63,6 +73,7 @@ def index_points(points, idx):
     return new_points
 
 
+# FOR GROUPING
 def query_ball_point(radius, nsample, xyz, new_xyz):
     """
     Input:
@@ -86,11 +97,14 @@ def query_ball_point(radius, nsample, xyz, new_xyz):
     group_idx[mask] = group_first[mask]
     return group_idx
 
+
 use_KD_cuda = False
+
+
 def query_ball_point_KD(radius, nsample, xyz, new_xyz):
     if not use_KD_cuda:
         from core.model.Pointnet.KD_cuda.cuda_kdtree import query_ball_point_KD
-        use_KD_cuda =True
+        use_KD_cuda = True
     """
     Input:
         radius: local region radius
@@ -104,11 +118,3 @@ def query_ball_point_KD(radius, nsample, xyz, new_xyz):
     new_xyz = new_xyz.detach().cpu().numpy()
     result = query_ball_point_KD(xyz, new_xyz, radius, nsample, times=8)
     return result
-
-def random_point_sample(xyz, npoint):
-    ret = torch.zeros([xyz.shape[0], npoint]).long()
-    for _ in range(xyz.shape[0]):
-        ret[_] = torch.randperm(xyz.shape[1])[:npoint]
-    #print(ret)
-    return ret
-

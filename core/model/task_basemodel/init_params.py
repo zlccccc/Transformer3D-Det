@@ -54,7 +54,7 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
         else:
             raise NotImplementedError(init_linear)
         init.constant_(m.bias.data, 0)
-    elif isinstance(m, nn.ReLU):
+    elif isinstance(m, nn.PReLU):
         pass
     elif isinstance(m, nn.modules.container.ModuleList) or isinstance(m, nn.modules.container.Sequential):
         pass
