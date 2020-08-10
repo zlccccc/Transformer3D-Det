@@ -17,7 +17,7 @@ common:
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
-    batch_size: 16
+    batch_size: 24
     workers: 4
     dataset:
         name: ShapeNetDataset
@@ -46,7 +46,7 @@ train:
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 16
+    batch_size: 24
     workers: 4
     dataset:
         testset:

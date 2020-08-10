@@ -8,7 +8,7 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
     assert len(init_type) <= 2, 'init_type.length <= 2'
     init_cnn, init_linear = init_type[0], init_type[-1]
     a = 0.25
-    if isinstance(m, nn.Conv2d):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv1d):
         fan_in, fan_out = init._calculate_fan_in_and_fan_out(m.weight.data)
         gain = math.sqrt((fan_in + fan_out / 2 / fan_in))
         if init_cnn == 'kaiming_uniform':
@@ -30,7 +30,7 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
             raise NotImplementedError(init_cnn)
         if m.bias is not None:
             init.constant_(m.bias.data, 0)
-    elif isinstance(m, BatchNorm2d):
+    elif isinstance(m, BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
         init.constant_(m.weight.data, 1)
         init.constant_(m.bias.data, 0)
     elif isinstance(m, nn.Linear):
@@ -54,6 +54,13 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
         else:
             raise NotImplementedError(init_linear)
         init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.ReLU):
+        pass
+    elif isinstance(m, nn.modules.container.ModuleList) or isinstance(m, nn.modules.container.Sequential):
+        pass
+    else:
+        print('initialize not impl', type(m))
+        # raise NotImplementedError(type(m))
 
 
 # weight_init(same as top few lines)

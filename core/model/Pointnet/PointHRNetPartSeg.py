@@ -30,10 +30,10 @@ class PointnetPlusPartSeg(seg_module):
         # self.fp2 = PointNetFeaturePropagation(in_channel=384, mlp=[256, 128])
         self.sa1 = PointNetMSG(512, [0.2], [32], in_channel, [[64, 64, 128]], [128])
         self.sa2 = PointNetMSG(128, [0.4], [64], 128, [[128, 128, 256]], [256])
-        self.fc1 = PointNetFeature(256, [256, 512, 1024], [], [])
+        self.fc1 = PointNetFeature(256, [256, 512, 1024], [], [0.4, 0.4])
         self.fp3 = PointNetPropagation(in_channel=1280, mlp=[256, 256])
         self.fp2 = PointNetPropagation(in_channel=384, mlp=[256, 128])
-        self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128, self.num_output])
+        self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128, 128, self.num_output])
 
         self.init_relu = 'relu'
         self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
