@@ -3,11 +3,13 @@ import torch.nn as nn
 from .Pointnet import PointnetInit
 from .PointnetPlus import PointnetPlus
 from .PointnetPlusSSG import PointnetPlusSSG
+from .PointnetPlusPartSeg import PointnetPlusPartSeg
 
 module_dict = {
     'pointnet': PointnetInit,
     'pointnet++': PointnetPlus,
     'pointnet++2': PointnetPlusSSG,
+    'pointnet_partseg': PointnetPlusPartSeg,
 }
 
 

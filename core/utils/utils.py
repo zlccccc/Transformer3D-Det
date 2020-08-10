@@ -6,7 +6,7 @@ import torch
 
 
 def create_logger(name, log_file, level=logging.INFO):
-    print('create_lgoger: ', log_file)
+    print('create_logger: ', log_file)
     ensure_sub_dir(log_file)
     logger = logging.getLogger(name)
     logger.propagate = False

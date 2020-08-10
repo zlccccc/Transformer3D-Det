@@ -2,19 +2,20 @@ import argparse
 import os
 import sys
 
+sys.path.append("./")  # for debuggingfrom core.runner import getrunner
+from core.data import get_dataset, get_one_dataset
+from core.model import model_entry
+from core.other.optimizer import get_optimizer
+from core.other.lr_scheduler import get_lr_scheduler
+from core.other.logs import Loggers
+from core.utils.utils import load_state
+from core.runner import getrunner
+
 import yaml
 from easydict import EasyDict
 import torch
 import torch.utils.data as data
-sys.path.append("./")  # for debuggingfrom core.runner import getrunner
 # print(os.getcwd())
-from core.runner import getrunner
-from core.utils.utils import load_state
-from core.other.logs import Loggers
-from core.other.lr_scheduler import get_lr_scheduler
-from core.other.optimizer import get_optimizer
-from core.model import model_entry
-from core.data import get_dataset, get_one_dataset
 
 parser = argparse.ArgumentParser(description='PyTorch training script')
 parser.add_argument('--config', default='None', type=str, help='config yaml path')
@@ -27,14 +28,14 @@ def main():
     args = parser.parse_args()
     torch.backends.cudnn.enabled = False
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    # TODO: GPU
+
     # print('config', args.config)
     with open(args.config, encoding='utf-8') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     config = EasyDict(config)
     if args.test:
         config.train.runner.name = 'test'
-        config.common.load.load=True
+        config.common.load.load = True
     loggers = Loggers(config.common.logs)
     loggers.update_loss({'args_out': args, 'config_out': config}, True)
 
@@ -75,6 +76,40 @@ def main():
         testdataloaders[key] = data.DataLoader(value, batch_size=config.test.batch_size,
                                                shuffle=False, num_workers=config.test.workers, drop_last=False,
                                                pin_memory=True)
+
+    # TODO: MULTI GPU TODO!!!
+    # if torch.cuda.device_count() > 1:
+    #     if (args.syncBN == True):
+    #         torch.cuda.set_device(args.local_rank)
+    #         world_size = args.ngpu
+    #         torch.distributed.init_process_group(
+    #             'nccl',
+    #             init_method='env://',
+    #             world_size=world_size,
+    #             rank=args.local_rank,
+    #         )
+    #         #classifier = torch.nn.SyncBatchNorm.convert_sync_batchnorm(classifier)
+    #         device = torch.device('cuda:{}'.format(args.local_rank))
+    #         model.to(device)
+    #         model = torch.nn.parallel.DistributedDataParallel(
+    #             model,
+    #             device_ids=[args.local_rank],
+    #             output_device=args.local_rank,
+    #         )
+    #     else:
+    #         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    #         print("Let's use", torch.cuda.device_count(), "GPUs!")
+    #         model = torch.nn.DataParallel(model)
+    #         model.to(device)
+
+    if torch.cuda.is_available:
+        print('use cuda(gpu)')
+        model = model.cuda()
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if torch.is_tensor(v):
+                    state[k] = v.cuda()
+
     info = {
         'config': config.train.runner,
         'traindataloader': traindataloader,

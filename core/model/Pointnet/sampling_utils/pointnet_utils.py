@@ -30,7 +30,7 @@ class PointNetFeature(nn.Module):
         for id, out_channel in enumerate(fc):
             self.fc.append(nn.Linear(last_channel, out_channel))
             if id != len(fc) - 1:
-                self.fc.append(BatchNorm1d(out_channel)) # its shape is ok
+                self.fc.append(BatchNorm1d(out_channel))  # its shape is ok
                 self.fc.append(nn.ReLU(out_channel))
                 self.fc.append(nn.Dropout(dropout[id]))
             last_channel = out_channel
@@ -55,7 +55,7 @@ class PointNetFeature(nn.Module):
         # print('shape after', features.shape)
         features = features.view(B, -1)
         features = self.fc(features)
-        #print(features)
+        # print(features)
         # print('shape final', features.shape)
         return features
 

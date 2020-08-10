@@ -16,13 +16,6 @@ def iterRunner(info):
     last_iter = info['last_iter']
     t_start = time.time()
     T_START = time.time()
-    if torch.cuda.is_available:
-        print('use cuda(gpu)')
-        model = model.cuda()
-        for state in optimizer.state.values():
-            for k, v in state.items():
-                if torch.is_tensor(v):
-                    state[k] = v.cuda()
     model.train_mode()  # change mode
     print('last_iter:', last_iter)
     for iter_id in range(last_iter + 1, config.max_iter + 1):

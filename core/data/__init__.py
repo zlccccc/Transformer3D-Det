@@ -2,6 +2,7 @@ from .dataset.Test3DDataset import Test3DDataset
 from .dataset.ModelNetDataset import ModelNetDataset
 from .dataset.ModelNetFeatureDataset import ModelNetFeatureDataset
 from .dataset._3DSSGDataset import PCSGDataset
+from .dataset.ShapeNetDataset import ShapeNetDataset
 
 
 def get_one_dataset(config: dict):
@@ -16,6 +17,8 @@ def get_one_dataset(config: dict):
         return ModelNetFeatureDataset(**config)
     elif name == '3DSSGDataset':
         return PCSGDataset(**config)
+    elif name == 'ShapeNetDataset':
+        return ShapeNetDataset(**config)
     else:
         raise NotImplementedError(name)
 
