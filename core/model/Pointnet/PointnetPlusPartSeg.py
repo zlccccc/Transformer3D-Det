@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from core.model.task_basemodel.taskmodel.seg_model import seg_module
-from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature, PointNetPropagation
+from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature, PointNetPropagation, mlp_list
 from core.model.PointnetYanx27 import provider
 from core.model.task_error.ShapeNetError import ShapeNetError
 
@@ -33,8 +33,8 @@ class PointnetPlusPartSeg(seg_module):
         self.fc1 = PointNetFeature(256, [256, 512, 1024], [], [])
         self.fp3 = PointNetPropagation(in_channel=1280, mlp=[256, 256])
         self.fp2 = PointNetPropagation(in_channel=384, mlp=[256, 128])
-        self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128, self.num_output])
-
+        self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128])
+        self.mlp1 = mlp_list(128, [128, self.num_output], nn.Conv1d, nn.BatchNorm1d, nn.PReLU)
         self.init_relu = 'relu'
         self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
 
@@ -63,7 +63,9 @@ class PointnetPlusPartSeg(seg_module):
         cls_label_one_hot = cls_label.view(B, 1, self.num_label).repeat(1, N, 1)
         l0_feature = torch.cat([cls_label_one_hot, xyz, norm], dim=2)
         # print(xyz.shape, l0_feature.shape, ' <<< l0 xyz and feature shape')
-        x = self.fp1(xyz, l1_xyz, l0_feature, l1_feature)  # 个人认为dropout no use
+        final_feature = self.fp1(xyz, l1_xyz, l0_feature, l1_feature)  # 个人认为dropout no use
+        # print(final_feature.shape)
+        x = self.mlp1(final_feature.permute(0, 2, 1)).permute(0, 2, 1)
         # print(x.shape, ' <<< result xyz and feature shape')
         return {'value': x}
 
@@ -86,6 +88,7 @@ class PointnetPlusPartSeg(seg_module):
         if self.task_type == 'ShapeNet':
             output = ShapeNetError(input, output)
         return output
+
 
 if __name__ == "__main__":
     import sys

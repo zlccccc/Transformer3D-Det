@@ -27,7 +27,7 @@ class baselogger():
         if divide is not None:
             value = value / divide  # mean of this iteration
         else:
-            raise NotImplementedError('Error fac name not in keyword; error_key = %s' %key)
+            raise NotImplementedError('Error fac name not in keyword; error_key = %s' % key)
         return value
 
     def __to_string(self, value, all=True):

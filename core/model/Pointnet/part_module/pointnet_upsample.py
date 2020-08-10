@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 
 
+# should add one mlp_list at last
 class PointNetPropagation(nn.Module):
     def __init__(self, in_channel, mlp):
         super(PointNetPropagation, self).__init__()

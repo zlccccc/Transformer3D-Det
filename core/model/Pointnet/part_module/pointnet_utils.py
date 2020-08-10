@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 
-def mlp_list(in_channel, channels, FC=nn.Linear, BN=nn.BatchNorm2d, ReLU=nn.ReLU, lastReLU=False):
+def mlp_list(in_channel, channels, FC=nn.Linear, BN=nn.BatchNorm2d, ReLU=nn.PReLU, lastReLU=False):
     mlps = []
     last_channel = in_channel
     for id, out_channel in enumerate(channels):
