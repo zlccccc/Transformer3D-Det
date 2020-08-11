@@ -3,8 +3,6 @@ common:
         name: pointnet_partseg
         normal_channel: True
         task_type: ShapeNet
-        # base_lr: 0.001
-        # weight_decay: 0.0001
     logs:
         baselogger:
             path: log/log.txt

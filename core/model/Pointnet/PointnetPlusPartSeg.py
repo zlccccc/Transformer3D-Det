@@ -17,8 +17,6 @@ class PointnetPlusPartSeg(seg_module):
             raise NotImplementedError('task type %s' % self.task_type)
 
         normal_channel = config.get('normal_channel', True)
-        # self.base_lr = config.base_lr
-        # self.weight_decay = config.weight_decay
         self.config = config
         super(PointnetPlusPartSeg, self).__init__()
         in_channel = 3 if normal_channel else 0

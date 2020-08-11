@@ -8,8 +8,6 @@ class PointnetPlus(cls_module):
         self.params = []
         normal_channel = config.get('normal_channel', True)
         num_output = config.get('num_output', 100)
-        self.base_lr = config.base_lr
-        self.weight_decay = config.weight_decay
         self.config = config
         super(PointnetPlus, self).__init__()
         in_channel = 3 if normal_channel else 0

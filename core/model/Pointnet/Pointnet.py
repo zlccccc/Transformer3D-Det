@@ -9,8 +9,6 @@ class PointnetInit(cls_module):
         assert 'normal_channel' not in config.keys()  # not same as PointnetInitial
         num_output = config.get('num_output', 100)
         self.in_channel = config.get('in_channel', 0)  # more
-        # self.base_lr = config.base_lr
-        # self.weight_decay = config.weight_decay
         self.config = config
         super(PointnetInit, self).__init__()
         self.fc1 = PointNetFeature(self.in_channel, [64, 128, 1024], [512, 256, num_output], [0, 0])

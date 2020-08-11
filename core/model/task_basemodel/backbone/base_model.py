@@ -63,33 +63,49 @@ class base_module(nn.Module):
         for m in self.modules():
             init_params(m, BatchNorm2d, init_type, nonlinearity=self.init_relu)
 
-    def set_params(self):
-        # lr_decay_mult = {}
-        # lr_decay_mult['nn.Conv2d'] = [1, 1, 2, 0]
-        # lr_decay_mult['nn.BatchNorm2d'] = [1, 0, 1, 0]
-        # arranged_names = set()
-        # for name, module in self.named_modules():
-        #     module_trainable = False
-        #     for key, value in lr_decay_mult.items():
-        #         if isinstance(module, eval(key)):
-        #             if not module.weight.requires_grad:
-        #                 continue
-        #             self.params.append({'params': module.weight, 'lr': value[0] * self.base_lr,
-        #                                 'weight_decay': value[1] * self.weight_decay})
-        #             arranged_names.add(name + '.weight')
-        #             if module.bias is not None and len(value) == 4:
-        #                 self.params.append({'params': module.bias, 'lr': value[2] * self.base_lr,
-        #                                     'weight_decay': value[3] * self.weight_decay})
-        #                 arranged_names.add(name + '.bias')
-        #         module_trainable = True
-        #     # print(name, type(module))
-        #     if not module_trainable:
-        #         print('params not set:', type(module), name)
+    def set_params_lr(self,base_lr, weight_decay):
+        parameters = []
+        lr_decay_mult = {}
+        lr_decay_mult['nn.Conv2d'] = [1, 1, 2, 0]  # weight and bias mult
+        lr_decay_mult['nn.Conv1d'] = [1, 1, 2, 0]  # weight and bias mult
+        lr_decay_mult['nn.BatchNorm2d'] = [1, 0, 1, 0]
+        lr_decay_mult['nn.BatchNorm1d'] = [1, 0, 1, 0]
+        print('set param lr using lr_decay_mult')
+        print(lr_decay_mult)
+        arranged_names = set()
+        for name, module in self.named_modules():
+            module_trainable = False
+            for key, value in lr_decay_mult.items():
+                if isinstance(module, eval(key)):
+                    if not module.weight.requires_grad:
+                        continue
+                    parameters.append({'params': module.weight, 'lr': value[0] * base_lr,
+                                       'weight_decay': value[1] * weight_decay})
+                    arranged_names.add(name + '.weight')
+                    print('set parameter', 'lr:',value[0], 'weight_decay:',value[1], name + '.weight', key)
+                    if module.bias is not None and len(value) == 4:
+                        parameters.append({'params': module.bias, 'lr': value[2] * base_lr,
+                                           'weight_decay': value[3] * weight_decay})
+                        arranged_names.add(name + '.bias')
+                        print('set parameter', 'lr:',value[2], 'weight_decay:',value[3], name + '.bias', key)
+                module_trainable = True
+            # print(name, type(module))
+            if not module_trainable:
+                print('params not set(not trainable):', type(module), name)
 
-        # print('get params start; for check')
-        # for name, param in self.named_parameters():
-        #     if name not in arranged_names:
-        #         self.params.append({'params': param})
-        # print('get params end')
-        # print('params', self.named_parameters().keys())
-        return self.parameters()
+        for name, param in self.named_parameters():
+            if not param.requires_grad:
+                continue
+            if name not in arranged_names:
+                print('set parameter (default)', name)
+                self.params.append({'params': param})  # 默认parameter group(base lr; parameter group)
+        print('get params end')
+        return parameters
+
+    def set_params(self, base_lr, weight_decay, weight_type='base'):
+        if weight_type == 'group' or True:
+            return self.set_params_lr(base_lr, weight_decay)
+        elif weight_type == 'base':
+            return self.parameters()
+        else:
+            raise NotImplementedError(weight_type)

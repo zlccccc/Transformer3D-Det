@@ -43,8 +43,11 @@ def main():
     test_datasets = get_dataset(config.test.dataset)
 
     model = model_entry(config.common.model)
-    parameters = model.set_params()
-    config.train.optimizer['lr'] = config.train.lr_scheduler.base_lr
+    # TO CHANGE BASE_LR AND WEIGHT_DECAY (group parameters)
+    base_lr = config.train.lr_scheduler.base_lr
+    weight_decay = config.train.optimizer.weight_decay
+    parameters = model.set_params(base_lr, weight_decay)  # for grouping
+    config.train.optimizer['lr'] = base_lr  # for base use (not grouped)
     optimizer = get_optimizer(config.train.optimizer, parameters)
     # load model pa rams
     lowest_err, last_iter = float('inf'), -1
@@ -56,8 +59,7 @@ def main():
         load_way = config.common.load.get('type', 'recover')
         if load_way == 'recover':
             print('Resume training from a previous checkpoint ...')
-            lowest_err, last_iter = load_state(
-                load_path, model, optimizer=optimizer)
+            lowest_err, last_iter = load_state(load_path, model, optimizer=optimizer)
         elif load_way == 'finetune':
             print('Finetuning from a previous model ...')
             load_state(load_path, model)

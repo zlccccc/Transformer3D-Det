@@ -10,8 +10,8 @@ def get_lr_scheduler(config):
     elif name == 'COSINE':
         return CosineLRScheduler(**config)
     elif name == 'lr_scheduler_step':
-        print(config.keys())
-        config.pop('base_lr')
+        print(config.keys(), '  <<< using torch-StepLR')
+        config.pop('base_lr')  # base_lr only for print (get lr not use)
         config['last_epoch'] = config['last_iter']
         config.pop('last_iter')
         return StepLR(**config)
