@@ -73,11 +73,13 @@ def main():
     traindataloader = data.DataLoader(train_dataset, batch_size=config.train.batch_size,
                                       shuffle=True, num_workers=config.train.workers, drop_last=True,
                                       pin_memory=True)
+    print('build dataset train shape %d' % len(train_dataset))
     testdataloaders = {}
     for key, value in test_datasets.items():
         testdataloaders[key] = data.DataLoader(value, batch_size=config.test.batch_size,
                                                shuffle=False, num_workers=config.test.workers, drop_last=False,
                                                pin_memory=True)
+        print('build dataset %s shape %d' %(key, len(value)))
 
     # TODO: MULTI GPU TODO!!!
     # if torch.cuda.device_count() > 1:

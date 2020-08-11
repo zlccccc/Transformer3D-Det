@@ -4,6 +4,7 @@ import json
 import warnings
 import numpy as np
 import torch
+import time
 from torch.utils.data import Dataset
 warnings.filterwarnings('ignore')
 
@@ -17,7 +18,7 @@ def pc_normalize(pc):
 
 
 class ShapeNetDataset(Dataset):
-    def __init__(self, root, npoint=2048, split='train', class_choice=None, normal_channel=False):
+    def __init__(self, root, npoint=2048, split='train', class_choice=None, normal_channel=False, build_cache=True):
         self.npoint = npoint
         self.root = root
         self.catfile = os.path.join(self.root, 'synsetoffset2category.txt')
@@ -85,11 +86,17 @@ class ShapeNetDataset(Dataset):
         #     print(cat, self.seg_classes[cat])
 
         self.cache = {}  # from index to (point_set, cls, seg) tuple
-        self.cache_size = 20000
+        self.cache_size = 0000  # NOT NEED!
+        if build_cache:
+            t_start = time.time()
+            for index in range(min(self.cache_size, self.__len__())):
+                if index % 100 == 0:
+                    print('building dataset: index %d, time=%.2f' % (index, time.time()-t_start), flush=True)
+                self.__getitem__(index)
 
     def __getitem__(self, index):
         if index in self.cache:
-            ppoint_set, cls, seg = self.cache[index]
+            point_set, cls, seg = self.cache[index]
         else:
             fn = self.datapath[index]
             cat = self.datapath[index][0]

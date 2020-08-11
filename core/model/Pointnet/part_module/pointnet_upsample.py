@@ -6,11 +6,11 @@ import torch.nn as nn
 
 # should add one mlp_list at last
 class PointNetPropagation(nn.Module):
-    def __init__(self, in_channel, mlp, BatchNorm1d=nn.BatchNorm1d):
+    def __init__(self, in_channel, mlp, BatchNorm1d=nn.BatchNorm1d, ReLU=nn.PReLU):
         super(PointNetPropagation, self).__init__()
         last_channel = in_channel
         self.mlp = MLP_List(last_channel, mlp,  # lastReLU=True? checkit
-                            FC=nn.Conv1d, BN=BatchNorm1d)  # no relu and dropout?
+                            FC=nn.Conv1d, BN=BatchNorm1d, ReLU=ReLU)  # no relu and dropout?
 
     def forward(self, xyz1, xyz2, features1, features2):
         """
