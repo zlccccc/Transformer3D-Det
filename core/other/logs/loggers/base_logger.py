@@ -65,7 +65,7 @@ class baselogger():
                     continue
                 if info_type == 'error' and keyword == 'error':  # mean of this type
                     value = self.__error_div_count(info, key, value)
-                nowstr = '%s:%s' % (key, self.__to_string(value, all=False, ForeColor=Fore.GREEN))
+                nowstr = '%s:%s' % (key, self.__to_string(value, all=False, ForeColor=Fore.LIGHTBLUE_EX))
                 # print(key, keyword, keyword in key, div_name)
                 if output_saved:
                     if info_type == 'error' and keyword == 'error':
