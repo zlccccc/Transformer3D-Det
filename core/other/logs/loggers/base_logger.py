@@ -65,19 +65,19 @@ class baselogger():
                     continue
                 if info_type == 'error' and keyword == 'error':  # mean of this type
                     value = self.__error_div_count(info, key, value)
-                nowstr = '%s:%s' % (key, self.__to_string(value, all=False))
+                nowstr = '%s:%s' % (key, self.__to_string(value, all=False, ForeColor=Fore.LIGHTCYAN_EX))
                 # print(key, keyword, keyword in key, div_name)
                 if output_saved:
                     if info_type == 'error' and keyword == 'error':
                         value = self.info[info_type][key]
                         value = self.__error_div_count(self.info[info_type], key, value)
-                        nowstr += '(mean=%s)' % self.__to_string(value, Fore.LIGHTGREEN_EX)
+                        nowstr += '(mean=%s)' % self.__to_string(value, ForeColor=Fore.LIGHTGREEN_EX)
                     else:
                         assert 'log_n_count' in self.info[info_type].keys(), 'output_saved(log_n_count) should in info[info_type]'
                         value = self.info[info_type][key]
                         divide = self.info[info_type]['log_n_count']
                         if divide != 1:
-                            nowstr += '(mean=%s)' % self.__to_string(value / divide, Fore.LIGHTRED_EX)
+                            nowstr += '(mean=%s)' % self.__to_string(value / divide, ForeColor=Fore.LIGHTRED_EX)
                 if keyword == key:
                     ALL_VAL = nowstr
                 else:
