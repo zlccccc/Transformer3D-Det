@@ -4,7 +4,7 @@ common:
         normal_channel: True
         task_type: ShapeNet
     logs:
-        baselogger:
+        base_logger:
             path: log/log.txt
         #tensorboard:
         #    path: log

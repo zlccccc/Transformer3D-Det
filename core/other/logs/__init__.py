@@ -11,7 +11,13 @@ class Loggers():
         for key, value in logger_configs.items():
             relative_key = '.' + key
             print('relatively import', relative_key, 'from core.other.logs.loggers')
-            logtype = importlib.import_module(relative_key, 'core.other.logs.loggers')
+            try:
+                logtype = importlib.import_module(relative_key, 'core.other.logs.loggers')
+            catch Exception as e:
+                print('logger', key, 'not exist')
+                print(str(e))
+            # import core.other.logs.loggers.base_logger
+            # logtype = importlib.import_module('core.other.logs.loggers.%s' % key)
             if key != basename:
                 assert basename in logger_configs.keys(), 'should calculate float value in base_logger'
             self.loggers[key] = logtype.logger(**value)
