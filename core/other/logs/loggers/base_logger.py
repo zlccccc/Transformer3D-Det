@@ -115,6 +115,9 @@ class baselogger():
             if 'iteration' in info.keys():
                 nowstr = 'Iter: %d/%d(epoch%.2f)' % (info['iteration'][0], info['iteration'][1], info['iteration'][2])
                 output.append(nowstr)
+            if 'lr' in info.keys():
+                nowstr = 'lr: %.10f' % info['lr']
+                output.append(nowstr)
             output.append(self._get_string_value(info, 'time', True, pinfo))
             output.append(self._get_string_value(info, 'loss', True, 'loss'))
             output.append(self._get_string_value(info, 'error', True, 'error'))

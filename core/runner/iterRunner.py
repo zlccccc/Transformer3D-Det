@@ -54,7 +54,7 @@ def iterRunner(info):
         output['time'] = t_tmp - t_start
         output['mean_time_iter'] = (t_tmp - T_START) / (iter_id - last_iter)
         t_start = t_tmp
-        output['_lr(loss)'] = lr_scheduler.get_lr()[0]
+        output['lr'] = lr_scheduler.get_lr()[0]
         if iter_id % config.test_freq == 0 or iter_id % config.save_freq == 0:
             model.val_mode()
             output_error = {}
