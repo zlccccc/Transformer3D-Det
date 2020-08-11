@@ -32,7 +32,7 @@ class baselogger():
             raise NotImplementedError('Error fac name not in keyword; error_key = %s' % key)
         return value
 
-    def __to_string(self, value, all=True, ForeColor=Fore.GREEN):
+    def __to_string(self, value, all=True, ForeColor=Fore.LIGHTWHITE_EX):
         if isinstance(value, float):
             return '%s%.3f%s' % (ForeColor, value, Style.RESET_ALL)
         elif isinstance(value, np.ndarray):
@@ -44,7 +44,7 @@ class baselogger():
             value = value.to('cpu')
             # print(value, value.view(-1).shape, 'tensor value')
             if value.view(-1).shape[0] == 1:
-                return '%.3f' % float(value)
+                return '%s%.3f%s' % (ForeColor, float(value), Style.RESET_ALL)
             if all:
                 str_val = 'torch[' + ','.join(['%.2f' % val for val in value]) + ']'
             return str_val + 'arrmean{%s%.3f%s}' % (ForeColor, value.mean(), Style.RESET_ALL)
@@ -77,13 +77,13 @@ class baselogger():
                         value = self.info[info_type][key]
                         divide = self.info[info_type]['log_n_count']
                         if divide != 1:
-                            nowstr += '(mean=%s)' % self.__to_string(value / divide, Fore.RED)
+                            nowstr += '(mean=%s)' % self.__to_string(value / divide, Fore.LIGHTRED_EX)
                 if keyword == key:
                     ALL_VAL = nowstr
                 else:
                     tmp.append(nowstr)
         assert len(tmp) != 0, '%s should have at least one type' % keyword
-        ALL_VAL = '%s%s%s' % (Fore.YELLOW, ALL_VAL, Style.RESET_ALL)
+        ALL_VAL = '%s%s%s' % (Fore.LIGHTYELLOW_EX, ALL_VAL, Style.RESET_ALL)
         return '{%s[%s]}' % (ALL_VAL, '|'.join(tmp))
 
     def _record_value(self, info, keywords, info_type):
@@ -116,11 +116,11 @@ class baselogger():
             # iteration
             if 'iteration' in info.keys():
                 nowstr = 'Iter: %d/%d(epoch%.2f)' % (info['iteration'][0], info['iteration'][1], info['iteration'][2])
-                nowstr = '%s%s%s' % (Fore.MAGENTA, nowstr, Style.RESET_ALL)
+                nowstr = '%s%s%s' % (Fore.LIGHTMAGENTA_EX, nowstr, Style.RESET_ALL)
                 output.append(nowstr)
             if 'lr' in info.keys():
                 nowstr = 'lr: %.10f' % info['lr']
-                nowstr = '%s%s%s' % (Fore.MAGENTA, nowstr, Style.RESET_ALL)
+                nowstr = '%s%s%s' % (Fore.LIGHTWHITE_EX, nowstr, Style.RESET_ALL)
                 output.append(nowstr)
             output.append(self._get_string_value(info, 'time', True, pinfo))
             output.append(self._get_string_value(info, 'loss', True, 'loss'))
