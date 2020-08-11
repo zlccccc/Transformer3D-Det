@@ -9,6 +9,9 @@ import torch
 class baselogger():
     def __init__(self, path):
         self.logger = create_logger('base', path)
+        self.clean_log_file = path + '.clean'
+        f = open(self.clean_log_file, 'w')
+        f.close()
         self.output = {}
         self.info = {'loss': {}, 'error': {}}
 
@@ -132,7 +135,14 @@ class baselogger():
             output.append(self._get_string_value(info, 'loss', True, 'loss'))
             output.append(self._get_string_value(info, 'error', True, 'error'))
             output = filter(lambda x: x is not None, output)
-            self.logger.info(' '.join(output))
+            value = ' '.join(output)
+            self.logger.info(value)
+            clean_log_file = open(self.clean_log_file, 'a')
+            for col in vars(Fore).values():
+                value = value.replace(str(col), '')
+            value = value.replace(str(Style.RESET_ALL), '')
+            clean_log_file.write(value)
+            clean_log_file.close()
 
     def update_loss(self, info: dict, shouldprint: bool):
         self._update_normal(info, shouldprint, 'loss')
