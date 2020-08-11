@@ -19,6 +19,9 @@ class baselogger():
         for key, value in info.items():
             if keyword in key:
                 self.logger.info("%s:%s" % (key, str(value)))
+                clean_log_file = open(self.clean_log_file, 'a')
+                clean_log_file.write(str(value)+'\n')
+                clean_log_file.close()
 
     def __error_div_count(self, info, key, value):
         '''divide: *(error) /= *(error_count); if not exist /=n_count'''
@@ -141,7 +144,7 @@ class baselogger():
             for col in vars(Fore).values():
                 value = value.replace(str(col), '')
             value = value.replace(str(Style.RESET_ALL), '')
-            clean_log_file.write(value)
+            clean_log_file.write(value+'\n')
             clean_log_file.close()
 
     def update_loss(self, info: dict, shouldprint: bool):
