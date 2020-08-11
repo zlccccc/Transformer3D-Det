@@ -1,42 +1,26 @@
 from .pointnet_downsample import PointNetMSG, PointNetMSGRandomSample
 from .pointnet_upsample import PointNetPropagation
+from .pointnet_base import MLP_List
 
 import torch
 import torch.nn as nn
 
 
-def mlp_list(in_channel, channels, FC=nn.Linear, BN=nn.BatchNorm2d, ReLU=nn.PReLU, lastReLU=False):
-    mlps = []
-    last_channel = in_channel
-    for id, out_channel in enumerate(channels):
-        mlps.append(FC(last_channel, out_channel, 1))
-        if id != len(channels) - 1 or lastReLU:
-            mlps.append(BN(out_channel))
-            mlps.append(ReLU(out_channel))
-        last_channel = out_channel
-    return nn.Sequential(*mlps)
-
-
 class PointNetFeature(nn.Module):
-    def __init__(self, in_channel, mlp, fc, dropout, BatchNorm2d=nn.BatchNorm2d, BatchNorm1d=nn.BatchNorm1d):
+    def __init__(self, in_channel, mlp, fc, dropout=None, BatchNorm2d=nn.BatchNorm2d, BatchNorm1d=nn.BatchNorm1d):
         super(PointNetFeature, self).__init__()
         self.convs = []
         last_channel = in_channel + 3
-        for out_channel in mlp:
-            self.convs.append(nn.Conv2d(last_channel, out_channel, 1))
-            self.convs.append(BatchNorm2d(out_channel))
-            self.convs.append(nn.PReLU(out_channel))
-            last_channel = out_channel
-        self.convs = nn.Sequential(*self.convs)
-        self.fc = []
-        for id, out_channel in enumerate(fc):
-            self.fc.append(nn.Linear(last_channel, out_channel))
-            if id != len(fc) - 1:
-                self.fc.append(BatchNorm1d(out_channel))  # its shape is ok
-                self.fc.append(nn.PReLU(out_channel))
-                self.fc.append(nn.Dropout(dropout[id]))
-            last_channel = out_channel
-        self.fc = nn.Sequential(*self.fc)
+        self.convs = MLP_List(last_channel, mlp,
+                              FC=nn.Conv2d, BN=BatchNorm2d, ReLU=nn.PReLU, lastReLU=True)
+        if len(mlp) != 0:
+            last_channel = mlp[-1]
+        if len(fc) == 0:
+            raise NotImplementedError('len(fc)!=0')
+        if dropout is not None and len(dropout) == 0:
+            dropout = None
+        self.fc = MLP_List(last_channel, fc,
+                           FC=nn.Linear, BN=BatchNorm1d, ReLU=nn.PReLU, dropout=dropout, lastReLU=False)
 
     def forward(self, xyz, features):
         """

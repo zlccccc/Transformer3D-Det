@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from core.model.task_basemodel.taskmodel.seg_model import seg_module
-from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature, PointNetPropagation, mlp_list
+from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature, PointNetPropagation, MLP_List
 from core.model.PointnetYanx27 import provider
 from core.model.task_error.ShapeNetError import ShapeNetError
 
@@ -28,11 +28,12 @@ class PointnetPlusPartSeg(seg_module):
         # self.fp2 = PointNetFeaturePropagation(in_channel=384, mlp=[256, 128])
         self.sa1 = PointNetMSG(512, [0.2], [32], in_channel, [[64, 64, 128]], [128])
         self.sa2 = PointNetMSG(128, [0.4], [64], 128, [[128, 128, 256]], [256])
-        self.fc1 = PointNetFeature(256, [256, 512, 1024], [], [])
+        self.fc1 = PointNetFeature(256, [256, 512, 1024], [1024])  # in; mlp; fc
         self.fp3 = PointNetPropagation(in_channel=1280, mlp=[256, 256])
         self.fp2 = PointNetPropagation(in_channel=384, mlp=[256, 128])
         self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128])
-        self.mlp1 = mlp_list(128, [128, self.num_output], nn.Conv1d, nn.BatchNorm1d, nn.PReLU)
+        self.mlp1 = MLP_List(128, [128, self.num_output], dropout=[0.5],
+                             FC=nn.Conv1d, BN=nn.BatchNorm1d, ReLU=nn.PReLU)
         self.init_relu = 'relu'
         self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
 

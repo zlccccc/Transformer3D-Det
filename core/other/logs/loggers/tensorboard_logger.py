@@ -3,7 +3,7 @@ from .loggerRegistry import LOGGERS
 import numpy as np
 import torch
 
-
+# TODO TO BE DONE
 @LOGGERS.register_module()
 class baselogger():
     def __init__(self, path):
@@ -104,7 +104,8 @@ class baselogger():
                 self.info[info_type]['log_n_count'] = 1
 
     def _update_normal(self, info: dict, shouldprint: bool, pinfo):
-        # baseline
+        # if 'value' in info.keys():
+        #     info.pop('value')
         # print(info, pinfo)
         self._direct_print(info, '_out')
         self._record_value(info, ['error', 'time', 'loss', 'n_count'], pinfo)

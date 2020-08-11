@@ -1,5 +1,5 @@
 from .sampling_utils import farthest_point_sample, random_point_sample, index_points
-from .pointnet_inputpoint import PointNetMSGInputPoint
+from .pointnet_base import PointNetMSGInputPoint
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

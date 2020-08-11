@@ -4,31 +4,45 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+# RELU: DROPOUT?
+def MLP_List(in_channel, channels, FC=nn.Linear, BN=nn.BatchNorm2d, ReLU=nn.PReLU, dropout=None, lastReLU=False, debug_print=False):
+    mlps = []
+    last_channel = in_channel
+    for id, out_channel in enumerate(channels):
+        mlps.append(FC(last_channel, out_channel, 1))
+        if debug_print:
+            print('mlp_list insert fc(%d,%d,1)', type(FC))
+        if id != len(channels) - 1 or lastReLU:
+            if BN is not None:
+                mlps.append(BN(out_channel))
+            if ReLU is not None:
+                mlps.append(ReLU(out_channel))
+            if dropout is not None:
+                assert len(dropout) > id, 'no dropout at id %d' % id
+                mlps.append(nn.Dropout(dropout[id]))
+        last_channel = out_channel
+    return nn.Sequential(*mlps)
+
+
 class PointNetMSGInputPoint(nn.Module):
-    def __init__(self, radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d=nn.BatchNorm2d, ini_feature=0):
+    def __init__(self, radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d=nn.BatchNorm2d, BatchNorm1d=nn.BatchNorm1d, ini_feature=0):
         super(PointNetMSGInputPoint, self).__init__()
         self.radius_list = radius_list
         self.nsample_list = nsample_list
         self.conv_blocks = nn.ModuleList()
         last_channel_all = ini_feature
-        for i in range(len(mlp_list)):
-            convs = []  # nn.conv2d(1,1):second channel
+        for i in range(len(mlp_list)):  # nn.conv2d(1,1):second channel
             last_channel = in_channel + 3
-            for out_channel in mlp_list[i]:
-                convs.append(nn.Conv2d(last_channel, out_channel, 1))
-                convs.append(BatchNorm2d(out_channel))
-                convs.append(nn.PReLU(out_channel))
-                last_channel = out_channel
-            convs = nn.Sequential(*convs)
-            self.conv_blocks.append(convs)
+            conv_now = MLP_List(last_channel, mlp_list[i],
+                                FC=nn.Conv2d, BN=BatchNorm2d, ReLU=nn.PReLU, lastReLU=True)
+            self.conv_blocks.append(conv_now)
+            if len(mlp_list[i]) != 0:
+                last_channel = mlp_list[i][-1]
+            else:
+                raise NotImplementedError('Warning : when PointNetMSGInputPoint; len(channel) have zero')
             last_channel_all += last_channel
-        self.conv_last = []
-        for out_channel in final_list:
-            self.conv_last.append(nn.Conv1d(last_channel_all, out_channel, 1))
-            self.conv_last.append(nn.BatchNorm1d(out_channel))
-            self.conv_last.append(nn.PReLU(out_channel))
-            last_channel_all = out_channel
-        self.conv_last = nn.Sequential(*self.conv_last)
+        self.conv_last = MLP_List(last_channel_all, mlp_list[i],
+                                  FC=nn.Conv1d, BN=BatchNorm1d, ReLU=nn.PReLU, lastReLU=True)
 
     def forward(self, xyz, new_xyz, features=None, new_features=None):
         """
@@ -38,7 +52,7 @@ class PointNetMSGInputPoint(nn.Module):
             new_xyz: sampled points position data, [B, S, C]
             new_features: sample points feature data, [B, S, D']
         Return:
-            new_features: final features
+            new_features: final features, [B, S, D'']
         """
         B, N, C = xyz.shape
         S = new_xyz.shape[1]
@@ -50,10 +64,9 @@ class PointNetMSGInputPoint(nn.Module):
             new_features_list = []
         for i, radius in enumerate(self.radius_list):
             # get k points and their features
+            # torch.cuda.empty_cache()
             K = self.nsample_list[i]
-            # torch.cuda.empty_cache()
             group_idx = query_ball_point(radius, K, xyz, new_xyz)
-            # torch.cuda.empty_cache()
             # print(group_idx)
             # print(np.max(group_idx), np.min(group_idx), xyz.shape, group_idx)
             grouped_xyz = index_points(xyz, group_idx)
