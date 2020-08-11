@@ -65,19 +65,22 @@ class baselogger():
                     continue
                 if info_type == 'error' and keyword == 'error':  # mean of this type
                     value = self.__error_div_count(info, key, value)
-                nowstr = '%s:%s' % (key, self.__to_string(value, all=False, ForeColor=Fore.LIGHTCYAN_EX))
+                nowstr = '%s:%s' % (key, self.__to_string(value, all=False, ForeColor=Fore.GREEN))
                 # print(key, keyword, keyword in key, div_name)
                 if output_saved:
                     if info_type == 'error' and keyword == 'error':
                         value = self.info[info_type][key]
                         value = self.__error_div_count(self.info[info_type], key, value)
-                        nowstr += '(mean=%s)' % self.__to_string(value, ForeColor=Fore.LIGHTGREEN_EX)
+                        nowstr += '(mean=%s)' % self.__to_string(value, ForeColor=Fore.LIGHTCYAN_EX)
                     else:
                         assert 'log_n_count' in self.info[info_type].keys(), 'output_saved(log_n_count) should in info[info_type]'
                         value = self.info[info_type][key]
                         divide = self.info[info_type]['log_n_count']
                         if divide != 1:
-                            nowstr += '(mean=%s)' % self.__to_string(value / divide, ForeColor=Fore.LIGHTRED_EX)
+                            if keyword == 'time':
+                                nowstr += '(mean=%s)' % self.__to_string(value / divide, ForeColor=Fore.LIGHTRED_EX)
+                            else:
+                                nowstr += '(mean=%s)' % self.__to_string(value / divide, ForeColor=Fore.LIGHTGREEN_EX)
                 if keyword == key:
                     ALL_VAL = nowstr
                 else:
@@ -115,8 +118,11 @@ class baselogger():
             output = [pinfo]
             # iteration
             if 'iteration' in info.keys():
-                nowstr = 'Iter: %d/%d(epoch%.2f)' % (info['iteration'][0], info['iteration'][1], info['iteration'][2])
-                nowstr = '%s%s%s' % (Fore.LIGHTMAGENTA_EX, nowstr, Style.RESET_ALL)
+                epochstr = 'epoch%.2f' % info['iteration'][2]
+                epochstr = '%s%s%s' % (Fore.RED, epochstr, Style.RESET_ALL)
+                iterstr = '%d/%d' % (info['iteration'][0], info['iteration'][1])
+                iterstr = '%s%s%s' % (Fore.YELLOW, iterstr, Style.RESET_ALL)
+                nowstr = 'Iter: %s(%s)' % (iterstr, epochstr)
                 output.append(nowstr)
             if 'lr' in info.keys():
                 nowstr = 'lr: %.10f' % info['lr']
