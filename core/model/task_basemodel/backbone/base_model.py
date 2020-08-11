@@ -103,7 +103,7 @@ class base_module(nn.Module):
         return parameters
 
     def set_params(self, base_lr, weight_decay, weight_type='base'):
-        if weight_type == 'group' or True:
+        if weight_type == 'group':
             return self.set_params_lr(base_lr, weight_decay)
         elif weight_type == 'base':
             return self.parameters()
