@@ -60,7 +60,7 @@ def iterRunner(info):
             output_error = {}
             error, weight, test_time = [], [], 0.
             for testset_name, loader in info['testdataloaders'].items():
-                _error, _weight = testmodel(model, loader, loggers, config.log_freq, testset_name)
+                _error, _weight = testmodel(model, loader, loggers, config.log_freq, testset_name, iter_id)
                 error.append(_error)
                 weight.append(_weight)
                 test_time += time.time() - t_start

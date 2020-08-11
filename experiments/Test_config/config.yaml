@@ -4,10 +4,10 @@ common:
         normal_channel: True
         task_type: ShapeNet
     logs:
-        baselogger:
+        base_logger:
             path: log/log.txt
-        #tensorboard:
-        #    path: log
+        tensorboard_logger:
+            path: log/tensorboard
     snapshot:
         save_path: snapshot
     load:

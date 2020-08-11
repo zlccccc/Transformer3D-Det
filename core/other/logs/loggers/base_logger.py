@@ -1,12 +1,10 @@
 from core.utils.utils import create_logger
 from colorama import Fore, Style
-from .loggerRegistry import LOGGERS
 import numpy as np
 import torch
 
 
-@LOGGERS.register_module()
-class baselogger():
+class logger():
     def __init__(self, path):
         self.logger = create_logger('base', path)
         self.clean_log_file = path + '.clean'
@@ -14,14 +12,12 @@ class baselogger():
         f.close()
         self.output = {}
         self.info = {'loss': {}, 'error': {}}
+        self.final_value = {}  # key; float(value)
 
     def _direct_print(self, info, keyword: str):
         for key, value in info.items():
             if keyword in key:
                 self.logger.info("%s:%s" % (key, str(value)))
-                clean_log_file = open(self.clean_log_file, 'a')
-                clean_log_file.write(str(value)+'\n')
-                clean_log_file.close()
 
     def __error_div_count(self, info, key, value):
         '''divide: *(error) /= *(error_count); if not exist /=n_count'''
@@ -40,20 +36,22 @@ class baselogger():
 
     def __to_string(self, value, all=True, ForeColor=Fore.LIGHTWHITE_EX):
         if isinstance(value, float):
-            return '%s%.3f%s' % (ForeColor, value, Style.RESET_ALL)
+            floatvalue = float(value)
+            return '%s%.3f%s' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
         elif isinstance(value, np.ndarray):
-            str_val = ''
-            if all:
-                str_val = 'np[' + ','.join(['%.2f' % val for val in value]) + ']'
-            return str_val + 'arrmean{%s%.3f%s}' % (ForeColor, np.mean(value), Style.RESET_ALL)
+            str_val = '' if not all else 'np[' + ','.join(['%.2f' % val for val in value]) + ']'
+            floatvalue = float(np.mean(value))
+            return str_val + 'arrmean{%s%.3f%s}' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
         elif isinstance(value, torch.Tensor):
             value = value.to('cpu')
             # print(value, value.view(-1).shape, 'tensor value')
             if value.view(-1).shape[0] == 1:
-                return '%s%.3f%s' % (ForeColor, float(value), Style.RESET_ALL)
-            if all:
-                str_val = 'torch[' + ','.join(['%.2f' % val for val in value]) + ']'
-            return str_val + 'arrmean{%s%.3f%s}' % (ForeColor, value.mean(), Style.RESET_ALL)
+                floatvalue = float(value)
+                return '%s%.3f%s' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
+            str_val = '' if not all else 'torch[' + ','.join(['%.2f' % val for val in value]) + ']'
+            floatvalue = float(np.mean(value))
+            # print(floatvalue, str_val)
+            return str_val + 'arrmean{%s%.3f%s}' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
         else:
             raise NotImplementedError(type(value), value)
 
@@ -66,27 +64,36 @@ class baselogger():
         if keyword not in info.keys():
             return None
         for key, value in sorted(info.items()):
-            if keyword in key:
+            if keyword in key:  # get one output
                 if '(error_count)' in key:  # do not print count
                     continue
                 if info_type == 'error' and keyword == 'error':  # mean of this type
                     value = self.__error_div_count(info, key, value)
-                nowstr = '%s:%s' % (key, self.__to_string(value, all=False, ForeColor=Fore.LIGHTBLUE_EX))
+                strval, _ = self.__to_string(value, all=False, ForeColor=Fore.LIGHTBLUE_EX)
+                nowstr = '%s:%s' % (key, strval)
+                # floatvalue not useful
                 # print(key, keyword, keyword in key, div_name)
                 if output_saved:
                     if info_type == 'error' and keyword == 'error':
                         value = self.info[info_type][key]
                         value = self.__error_div_count(self.info[info_type], key, value)
-                        nowstr += '(mean=%s)' % self.__to_string(value, ForeColor=Fore.LIGHTCYAN_EX)
+                        strval, floatval = self.__to_string(value, ForeColor=Fore.LIGHTCYAN_EX)
+                        self.final_value[key] = floatval
+                        nowstr += '(mean=%s)' % strval
                     else:
                         assert 'log_n_count' in self.info[info_type].keys(), 'output_saved(log_n_count) should in info[info_type]'
                         value = self.info[info_type][key]
                         divide = self.info[info_type]['log_n_count']
+                        if keyword == 'time':
+                            strval, floatval = self.__to_string(value / divide, ForeColor=Fore.LIGHTRED_EX)
+                            # self.final_value[key] = floatval  # do not log time at tensorboard
+                        elif keyword == 'loss':
+                            strval, floatval = self.__to_string(value / divide, ForeColor=Fore.LIGHTGREEN_EX)
+                            self.final_value[key] = floatval
+                        else:
+                            raise NotImplementedError('when calculating mean and coloring', keyword)
                         if divide != 1:
-                            if keyword == 'time':
-                                nowstr += '(mean=%s)' % self.__to_string(value / divide, ForeColor=Fore.LIGHTRED_EX)
-                            else:
-                                nowstr += '(mean=%s)' % self.__to_string(value / divide, ForeColor=Fore.LIGHTGREEN_EX)
+                            nowstr += '(mean=%s)' % strval
                 if keyword == key:
                     ALL_VAL = nowstr
                 else:
@@ -148,15 +155,18 @@ class baselogger():
             clean_log_file.close()
 
     def update_loss(self, info: dict, shouldprint: bool):
+        self.final_value = {}
         self._update_normal(info, shouldprint, 'loss')
         if shouldprint:
             self.info['loss'].clear()
             # print('from loss: clean up')
 
     def update_error(self, info: dict, shouldprint: bool):
+        self.final_value = {}
         self._update_normal(info, shouldprint, 'error')
         if info.get('flush', False):
             self.info['error'].clear()
             # print('from error: clean up')
 
-    # def _get_value():
+    def get_float_value(self):
+        return self.final_value

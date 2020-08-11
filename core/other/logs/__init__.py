@@ -1,6 +1,6 @@
-from .loggers.loggerRegistry import LOGGERS
-
-from .loggers.base_logger import *
+import os
+import importlib
+basename = 'base_logger'
 
 
 class Loggers():
@@ -9,17 +9,27 @@ class Loggers():
         self.loggers = {}
         print(logger_configs)  # TODO: for debug
         for key, value in logger_configs.items():
-            logtype = LOGGERS.get(key)
-            if logtype is None:
-                raise NotImplementedError(key)
-            self.loggers[key] = logtype(**value)
+            relative_key = '.' + key
+            print('relatively import', relative_key, 'from core.other.logs.loggers')
+            logtype = importlib.import_module(relative_key, 'core.other.logs.loggers')
+            if key != basename:
+                assert basename in logger_configs.keys(), 'should calculate float value in base_logger'
+            self.loggers[key] = logtype.logger(**value)
 
     def update_loss(self, info, shouldprint):  # calculate sum
+        if basename in self.loggers:
+            self.loggers[basename].update_loss(info, shouldprint)
+            floatvalue = self.loggers[basename].get_float_value()
         for key, value in self.loggers.items():
-            # print('logger update_loss', key, value)
-            value.update_loss(info, shouldprint)
+            if key == basename:
+                continue
+            value.update(info, floatvalue, shouldprint, 'loss')
 
     def update_error(self, info, shouldprint):
+        if basename in self.loggers:
+            self.loggers[basename].update_error(info, shouldprint)
+            floatvalue = self.loggers[basename].get_float_value()
         for key, value in self.loggers.items():
-            # print('logger update_error', key, value)
-            value.update_error(info, shouldprint)
+            if key == basename:
+                continue
+            value.update(info, floatvalue, shouldprint, 'error')

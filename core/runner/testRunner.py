@@ -21,12 +21,11 @@ def testRunner(info):
                 if torch.is_tensor(v):
                     state[k] = v.cuda()
     model.train_mode()  # change mode
-    print('last_iter:', last_iter)
     model.val_mode()
     output_error = {}
     error, weight, test_time = [], [], 0.
     for testset_name, loader in info['testdataloaders'].items():
-        _error, _weight = testmodel(model, loader, loggers, config.log_freq, testset_name)
+        _error, _weight = testmodel(model, loader, loggers, config.log_freq, testset_name, last_iter)
         error.append(_error)
         weight.append(_weight)
         test_time += time.time() - t_start

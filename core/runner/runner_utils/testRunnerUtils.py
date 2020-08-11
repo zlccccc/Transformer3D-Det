@@ -2,7 +2,7 @@ import torch
 import time
 
 
-def testmodel(model, loader, loggers, test_freq, testset_name):
+def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # last_iter: for logging use
     # val_mode
     all_error, n_count = 0., 0
     for it, sample in enumerate(loader):
@@ -17,6 +17,7 @@ def testmodel(model, loader, loggers, test_freq, testset_name):
             output['testset_name_out'] = testset_name
         output['iteration'] = [it + 1, len(loader), (it + 1) / len(loader)]
         if it == len(loader) - 1:
+            output['last_iter'] = last_iter
             output['flush'] = True
         loggers.update_error(output, it % test_freq == 0 or it == len(loader) - 1)
         all_error += output['error']
