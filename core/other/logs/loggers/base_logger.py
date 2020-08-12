@@ -140,6 +140,7 @@ class logger():
             if 'lr' in info.keys():
                 nowstr = 'lr: %.10f' % info['lr']
                 nowstr = '%s%s%s' % (Fore.LIGHTWHITE_EX, nowstr, Style.RESET_ALL)
+                self.final_value['lr'] = float(info['lr'])
                 output.append(nowstr)
             output.append(self._get_string_value(info, 'time', True, pinfo))
             output.append(self._get_string_value(info, 'loss', True, 'loss'))

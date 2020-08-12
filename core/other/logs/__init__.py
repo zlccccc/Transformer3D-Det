@@ -13,7 +13,7 @@ class Loggers():
             print('relatively import', relative_key, 'from core.other.logs.loggers')
             try:
                 logtype = importlib.import_module(relative_key, 'core.other.logs.loggers')
-            catch Exception as e:
+            except Exception as e:
                 print('logger', key, 'not exist')
                 print(str(e))
             # import core.other.logs.loggers.base_logger
