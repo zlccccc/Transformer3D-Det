@@ -6,8 +6,8 @@ common:
     logs:
         base_logger:
             path: log/log.txt
-        #tensorboard:
-        #    path: log
+        tensorboard_logger:
+            path: log
     snapshot:
         save_path: snapshot
     load:
