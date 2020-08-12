@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from core.model.task_basemodel.taskmodel.seg_model import seg_module
-from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature, PointNetPropagation
+from core.model.Pointnet.part_module.pointnet_utils import PointNetMSG, PointNetFeature, PointNetPropagation, MLP_List
 from core.model.PointnetYanx27 import provider
 from core.model.task_error.ShapeNetError import ShapeNetError
 
@@ -21,20 +21,17 @@ class PointnetPlusPartSeg(seg_module):
         super(PointnetPlusPartSeg, self).__init__()
         in_channel = 3 if normal_channel else 0
         self.normal_channel = normal_channel
-        # self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=6+additional_channel, mlp=[64, 64, 128], group_all=False)
-        # self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3, mlp=[128, 128, 256], group_all=False)
-        # self.sa3 = PointNetSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + 3, mlp=[256, 512, 1024], group_all=True)
-        # self.fp3 = PointNetFeaturePropagation(in_channel=1280, mlp=[256, 256])
-        # self.fp2 = PointNetFeaturePropagation(in_channel=384, mlp=[256, 128])
         self.sa1 = PointNetMSG(512, [0.2], [32], in_channel, [[64, 64, 128]], [128])
         self.sa2 = PointNetMSG(128, [0.4], [64], 128, [[128, 128, 256]], [256])
-        self.fc1 = PointNetFeature(256, [256, 512, 1024], [], [0.4, 0.4])
+        self.fc1 = PointNetFeature(256, [256, 512, 1024], [1024])  # in; mlp; fc
         self.fp3 = PointNetPropagation(in_channel=1280, mlp=[256, 256])
         self.fp2 = PointNetPropagation(in_channel=384, mlp=[256, 128])
-        self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128, 128, self.num_output])
-
+        self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128])
+        self.mlp1 = MLP_List(128, [128, self.num_output], dropout=[0.5],
+                             FC=nn.Conv1d, BN=nn.BatchNorm1d, ReLU=nn.PReLU)
         self.init_relu = 'relu'
         self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
+
 
     def _forward(self, input):
         # print(xyz.shape)
@@ -46,20 +43,24 @@ class PointnetPlusPartSeg(seg_module):
             norm = xyz[:, :, 3:]
         else:
             norm = None
-        xyz = xyz[:, :, :3]
-        l1_xyz, l1_points = self.sa1(xyz, norm)
-        l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
-        l3_feature = self.fc1(l2_xyz, l2_points)
-        l3_feature = l3_feature.view(l3_feature.shape[0], 1, l3_feature.shape[1])
-        l3_xyz = torch.zeros((l2_xyz.shape[0], 1, 3)).type_as(xyz)
-        # print(l3_xyz.shape, l3_feature.shape, ' <<< l3 xyz and feature shape')
-        l2_feature = self.fp3(l2_xyz, l3_xyz, l2_points, l3_feature)
-        l1_feature = self.fp2(l1_xyz, l2_xyz, l1_points, l2_feature)
-        # print(l1_xyz.shape, l1_feature.shape, ' <<< l1 xyz and feature shape')
+        xyz = xyz[:,:,:3]
+
         cls_label = nn.functional.one_hot(cls_label, self.num_label).type_as(xyz)
         # print(cls_label.shape, ' <<< cls label shape')
         cls_label_one_hot = cls_label.view(B, 1, self.num_label).repeat(1, N, 1)
         l0_feature = torch.cat([cls_label_one_hot, xyz, norm], dim=2)
+
+        l1_xyz, l11_points = self.sa1(xyz, l0_feature)
+        l2_xyz, l22_points = self.sa2(l1_xyz, l11_points)
+        l33_feature = self.fc1(l2_xyz, l22_points)
+        l33_feature = l33_feature.view(l33_feature.shape[0], 1, l33_feature.shape[1])
+        l3_xyz = torch.zeros((l2_xyz.shape[0], 1, 3)).type_as(xyz)
+        # l1_xyz; l2_xyz; l3_xyz
+
+        # print(l3_xyz.shape, l3_feature.shape, ' <<< l3 xyz and feature shape')
+        l2_feature = self.fp3(l2_xyz, l3_xyz, l2_points, l3_feature)
+        l1_feature = self.fp2(l1_xyz, l2_xyz, l1_points, l2_feature)
+        # print(l1_xyz.shape, l1_feature.shape, ' <<< l1 xyz and feature shape')
         # print(xyz.shape, l0_feature.shape, ' <<< l0 xyz and feature shape')
         x = self.fp1(xyz, l1_xyz, l0_feature, l1_feature)  # 个人认为dropout no use
         # print(x.shape, ' <<< result xyz and feature shape')

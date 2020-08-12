@@ -21,12 +21,7 @@ class PointnetPlusPartSeg(seg_module):
         super(PointnetPlusPartSeg, self).__init__()
         in_channel = 3 if normal_channel else 0
         self.normal_channel = normal_channel
-        # self.sa1 = PointNetSetAbstraction(npoint=512, radius=0.2, nsample=32, in_channel=6+additional_channel, mlp=[64, 64, 128], group_all=False)
-        # self.sa2 = PointNetSetAbstraction(npoint=128, radius=0.4, nsample=64, in_channel=128 + 3, mlp=[128, 128, 256], group_all=False)
-        # self.sa3 = PointNetSetAbstraction(npoint=None, radius=None, nsample=None, in_channel=256 + 3, mlp=[256, 512, 1024], group_all=True)
-        # self.fp3 = PointNetFeaturePropagation(in_channel=1280, mlp=[256, 256])
-        # self.fp2 = PointNetFeaturePropagation(in_channel=384, mlp=[256, 128])
-        self.sa1 = PointNetMSG(512, [0.2], [32], in_channel, [[64, 64, 128]], [128])
+        self.sa1 = PointNetMSG(512, [0.2], [32], 3 + in_channel, [[64, 64, 128]], [128])  # should input xyz...
         self.sa2 = PointNetMSG(128, [0.4], [64], 128, [[128, 128, 256]], [256])
         self.fc1 = PointNetFeature(256, [256, 512, 1024], [1024])  # in; mlp; fc
         self.fp3 = PointNetPropagation(in_channel=1280, mlp=[256, 256])
@@ -43,10 +38,7 @@ class PointnetPlusPartSeg(seg_module):
         cls_label = input['cls']  # pointnet cls use
 
         B, N, _ = xyz.shape
-        if self.normal_channel:
-            norm = xyz[:, :, 3:]
-        else:
-            norm = None
+        norm = xyz  # channel = 3 + (rgb)
         xyz = xyz[:, :, :3]
         l1_xyz, l1_points = self.sa1(xyz, norm)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
@@ -60,7 +52,7 @@ class PointnetPlusPartSeg(seg_module):
         cls_label = nn.functional.one_hot(cls_label, self.num_label).type_as(xyz)
         # print(cls_label.shape, ' <<< cls label shape')
         cls_label_one_hot = cls_label.view(B, 1, self.num_label).repeat(1, N, 1)
-        l0_feature = torch.cat([cls_label_one_hot, xyz, norm], dim=2)
+        l0_feature = torch.cat([cls_label_one_hot, norm], dim=2)
         # print(xyz.shape, l0_feature.shape, ' <<< l0 xyz and feature shape')
         final_feature = self.fp1(xyz, l1_xyz, l0_feature, l1_feature)  # 个人认为dropout no use
         # print(final_feature.shape)

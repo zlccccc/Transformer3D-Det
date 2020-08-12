@@ -25,16 +25,17 @@ def MLP_List(in_channel, channels, FC=nn.Linear, BN=nn.BatchNorm2d, ReLU=nn.PReL
 
 
 class PointNetMSGInputPoint(nn.Module):
-    def __init__(self, radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d=nn.BatchNorm2d, BatchNorm1d=nn.BatchNorm1d, ini_feature=0):
+    def __init__(self, radius_list, nsample_list, in_channel, mlp_list, final_list,
+                 BatchNorm2d=nn.BatchNorm2d, BatchNorm1d=nn.BatchNorm1d, ReLU=nn.PReLU, ini_feature_channel=0):
         super(PointNetMSGInputPoint, self).__init__()
         self.radius_list = radius_list
         self.nsample_list = nsample_list
         self.conv_blocks = nn.ModuleList()
-        last_channel_all = ini_feature
+        last_channel_all = ini_feature_channel
         for i in range(len(mlp_list)):  # nn.conv2d(1,1):second channel
             last_channel = in_channel + 3
             conv_now = MLP_List(last_channel, mlp_list[i],
-                                FC=nn.Conv2d, BN=BatchNorm2d, ReLU=nn.PReLU, lastReLU=True)
+                                FC=nn.Conv2d, BN=BatchNorm2d, ReLU=ReLU, lastReLU=True)
             self.conv_blocks.append(conv_now)
             if len(mlp_list[i]) != 0:
                 last_channel = mlp_list[i][-1]

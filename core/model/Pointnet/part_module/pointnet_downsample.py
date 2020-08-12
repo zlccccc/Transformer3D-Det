@@ -6,10 +6,12 @@ import torch.nn.functional as F
 
 
 class PointNetMSG(nn.Module):
-    def __init__(self, npoint, radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d=nn.BatchNorm2d):
+    def __init__(self, npoint, radius_list, nsample_list, in_channel, mlp_list, final_list,
+                 BatchNorm2d=nn.BatchNorm2d, ReLU=nn.PReLU):
         super(PointNetMSG, self).__init__()
         self.npoint = npoint
-        self.pointnet = PointNetMSGInputPoint(radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d)
+        self.pointnet = PointNetMSGInputPoint(radius_list, nsample_list, in_channel, mlp_list, final_list,
+                                              BatchNorm2d=BatchNorm2d, ReLU=ReLU)
 
     def forward(self, xyz, features=None):
         """
@@ -32,7 +34,8 @@ class PointNetMSG(nn.Module):
 
 
 class PointNetMSGRandomSample(nn.Module):
-    def __init__(self, npoint, radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d=nn.BatchNorm2d):
+    def __init__(self, npoint, radius_list, nsample_list, in_channel, mlp_list, final_list,
+                 BatchNorm2d=nn.BatchNorm2d, ReLU=nn.PReLU):
         super(PointNetMSGRandomSample, self).__init__()
         self.npoint = npoint
         self.pointnet = PointNetMSGInputPoint(radius_list, nsample_list, in_channel, mlp_list, final_list, BatchNorm2d)
