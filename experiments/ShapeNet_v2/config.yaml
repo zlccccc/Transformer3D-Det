@@ -6,12 +6,12 @@ common:
     logs:
         base_logger:
             path: log/log.txt
-        #tensorboard:
-        #    path: log
+        tensorboard_logger:
+            path: log
     snapshot:
         save_path: snapshot
     load:
-        load: True
+        load: False
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
