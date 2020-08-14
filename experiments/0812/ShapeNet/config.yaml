@@ -1,6 +1,6 @@
 common:
     model:
-        name: pointnet_partseg
+        name: pointnet_partsegHR
         normal_channel: True
         task_type: ShapeNet
     logs:
