@@ -57,7 +57,7 @@ class PointNetMSGInputPoint(nn.Module):
         """
         B, N, C = xyz.shape
         S = new_xyz.shape[1]
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         # print(new_xyz, new_xyz.shape)
         if return_group_id:
             group_ids = []

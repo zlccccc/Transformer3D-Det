@@ -15,7 +15,7 @@ common:
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
-    batch_size: 8
+    batch_size: 12
     workers: 4
     dataset:
         name: ShapeNetDataset
@@ -31,20 +31,20 @@ train:
         weight_decay: 0.0001
     lr_scheduler:
         type: lr_scheduler_step
-        step_size: 10000
+        step_size: 20000
         gamma: 0.5
         base_lr: 0.001
     transform: None # TODO
     runner:
         name: iteration
-        max_iter: 100000
+        max_iter: 200000
         # test and save
         test_freq: 1000
-        save_freq: 10000
+        save_freq: 200000
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 8
+    batch_size: 12
     workers: 4
     dataset:
         testset:
