@@ -15,12 +15,12 @@ class PointNetFeature(nn.Module):
                               FC=nn.Conv2d, BN=BatchNorm2d, ReLU=nn.PReLU, lastReLU=True)
         if len(mlp) != 0:
             last_channel = mlp[-1]
-        if len(fc) == 0:
-            raise NotImplementedError('len(fc)!=0')
+        # if len(fc) == 0:
+        #     raise NotImplementedError('len(fc)!=0')
         if dropout is not None and len(dropout) == 0:
             dropout = None
         self.fc = MLP_List(last_channel, fc,
-                           FC=nn.Linear, BN=BatchNorm1d, ReLU=nn.PReLU, dropout=dropout, lastReLU=False)
+                           FC=nn.Linear, BN=BatchNorm1d, ReLU=nn.PReLU, dropout=dropout, lastReLU=True)
 
     def forward(self, xyz, features):
         """

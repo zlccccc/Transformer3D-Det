@@ -21,14 +21,14 @@ class PointnetPlusPartSeg(seg_module):
         super(PointnetPlusPartSeg, self).__init__()
         in_channel = 3 if normal_channel else 0
         self.normal_channel = normal_channel
-        self.sa1 = PointNetMSG(512, [0.2], [32], 3 + in_channel, [[64, 64, 128]], [128])  # should input xyz...
-        self.sa2 = PointNetMSG(128, [0.4], [64], 128, [[128, 128, 256]], [256])
-        self.fc1 = PointNetFeature(256, [256, 512, 1024], [1024])  # in; mlp; fc
+        self.sa1 = PointNetMSG(512, [0.2], [32], 3 + in_channel, [[64, 64, 128]], [])  # should input xyz...
+        self.sa2 = PointNetMSG(128, [0.4], [64], 128, [[128, 128, 256]], [])
+        self.fc1 = PointNetFeature(256, [256, 512, 1024], [])  # in; mlp; fc
         self.fp3 = PointNetPropagation(in_channel=1280, mlp=[256, 256])
         self.fp2 = PointNetPropagation(in_channel=384, mlp=[256, 128])
         self.fp1 = PointNetPropagation(in_channel=128 + 3 + in_channel + self.num_label, mlp=[128, 128])
         self.mlp1 = MLP_List(128, [128, self.num_output], dropout=[0.5],
-                             FC=nn.Conv1d, BN=nn.BatchNorm1d, ReLU=nn.PReLU)
+                             FC=nn.Conv1d, BN=nn.BatchNorm1d, ReLU=None)
         self.init_relu = 'relu'
         self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
 
