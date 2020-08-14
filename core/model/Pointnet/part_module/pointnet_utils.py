@@ -6,6 +6,21 @@ import torch
 import torch.nn as nn
 
 
+class MLP(nn.Module):  # MLP for feature;
+    def __init__(self, in_channel, channels, FC=nn.Linear, BN=nn.BatchNorm2d, ReLU=nn.PReLU, dropout=None, lastReLU=False, debug_print=False):
+        """
+        Input:
+            features: sample points feature data, [B, S, D]
+        Return:
+            new_features: final features, [B, S, D']
+        """
+        super(MLP, self).__init__()
+        self.mlp = MLP_List(in_channel, channels, FC, BN, ReLU, dropout, lastReLU, debug_print)
+
+    def forward(self, feature):
+        return self.mlp(feature.permute(0, 2, 1)).permute(0, 2, 1)
+
+
 class PointNetFeature(nn.Module):
     def __init__(self, in_channel, mlp, fc, dropout=None, BatchNorm2d=nn.BatchNorm2d, BatchNorm1d=nn.BatchNorm1d):
         super(PointNetFeature, self).__init__()

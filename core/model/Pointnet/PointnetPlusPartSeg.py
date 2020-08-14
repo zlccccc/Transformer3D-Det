@@ -68,9 +68,7 @@ class PointnetPlusPartSeg(seg_module):
             points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
             points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
             points = torch.from_numpy(points)
-            if input['point_set'].is_cuda:
-                points = points.cuda()
-            input['point_set'] = points
+            input['point_set'] = points.type_as(input['point_set'])
             # print('before forwrad')
         return input
 

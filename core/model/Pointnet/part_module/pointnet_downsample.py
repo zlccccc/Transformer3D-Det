@@ -13,7 +13,7 @@ class PointNetMSG(nn.Module):
         self.pointnet = PointNetMSGInputPoint(radius_list, nsample_list, in_channel, mlp_list, final_list,
                                               BatchNorm2d=BatchNorm2d, ReLU=ReLU)
 
-    def forward(self, xyz, features=None):
+    def forward(self, xyz, features=None, return_group_id=False, grouped_ids=None, sampled_new_xyz=None):
         """
         Input:
             xyz: input points position data, [B, N, C]
@@ -24,12 +24,16 @@ class PointNetMSG(nn.Module):
         """
         B, N, C = xyz.shape
         S = self.npoint
-        if self.npoint != N:
-            fpx_idx = farthest_point_sample(xyz, S)
-            new_xyz = index_points(xyz, fpx_idx)
+        if sampled_new_xyz is not None:
+            new_xyz = sampled_new_xyz
         else:
-            new_xyz = xyz
-        new_features = self.pointnet(xyz, new_xyz, features, None)
+            if self.npoint != N:
+                fpx_idx = farthest_point_sample(xyz, S)
+                new_xyz = index_points(xyz, fpx_idx)
+            else:
+                new_xyz = xyz
+        new_features = self.pointnet(xyz, new_xyz, features, new_features=None,
+                                     return_group_id=return_group_id, grouped_ids=grouped_ids)
         return new_xyz, new_features
 
 

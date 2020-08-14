@@ -5,6 +5,7 @@ from .PointnetPlus import PointnetPlus
 from .PointnetPlusSSG import PointnetPlusSSG
 from .PointnetPlusPartSeg import PointnetPlusPartSeg
 from .PointnetPlusPartSegv2 import PointnetPlusPartSegv2
+from .PointHRNetPartSeg import PointnetPlusPartSegHR
 
 module_dict = {
     'pointnet': PointnetInit,
@@ -12,6 +13,7 @@ module_dict = {
     'pointnet++2': PointnetPlusSSG,
     'pointnet_partseg': PointnetPlusPartSeg,
     'pointnet_partsegv2': PointnetPlusPartSegv2,
+    'pointnet_partsegHR': PointnetPlusPartSegHR,
 }
 
 

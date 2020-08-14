@@ -1,6 +1,6 @@
 common:
     model:
-        name: pointnet_partseg
+        name: pointnet_partsegHR
         normal_channel: True
         task_type: ShapeNet
     logs:
@@ -15,7 +15,7 @@ common:
         path: ./ckpt_best_model.pth.tar
         type: recover
 train:
-    batch_size: 24
+    batch_size: 8
     workers: 4
     dataset:
         name: ShapeNetDataset
@@ -44,7 +44,7 @@ train:
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 24
+    batch_size: 8
     workers: 4
     dataset:
         testset:

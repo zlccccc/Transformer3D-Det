@@ -45,7 +45,7 @@ class PointNetMSGInputPoint(nn.Module):
         self.conv_last = MLP_List(last_channel_all, mlp_list[i],
                                   FC=nn.Conv1d, BN=BatchNorm1d, ReLU=nn.PReLU, lastReLU=True)
 
-    def forward(self, xyz, new_xyz, features=None, new_features=None):
+    def forward(self, xyz, new_xyz, features=None, new_features=None, return_group_id=False, grouped_ids=None):
         """
         Input:
             xyz: input points position data, [B, N, C]
@@ -57,8 +57,10 @@ class PointNetMSGInputPoint(nn.Module):
         """
         B, N, C = xyz.shape
         S = new_xyz.shape[1]
-        # torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
         # print(new_xyz, new_xyz.shape)
+        if return_group_id:
+            group_ids = []
         if new_features is not None:
             new_features_list = [new_features.permute(0, 2, 1)]
         else:
@@ -67,7 +69,12 @@ class PointNetMSGInputPoint(nn.Module):
             # get k points and their features
             # torch.cuda.empty_cache()
             K = self.nsample_list[i]
-            group_idx = query_ball_point(radius, K, xyz, new_xyz)
+            if grouped_ids is not None:  # from input (for speed-up)
+                group_idx = grouped_ids[i]
+            else:
+                group_idx = query_ball_point(radius, K, xyz, new_xyz)
+            if return_group_id:
+                group_ids.append(group_idx)
             # print(group_idx)
             # print(np.max(group_idx), np.min(group_idx), xyz.shape, group_idx)
             grouped_xyz = index_points(xyz, group_idx)
@@ -100,4 +107,6 @@ class PointNetMSGInputPoint(nn.Module):
         # print(new_features.shape)
         new_features = new_features.permute(0, 2, 1)
         # print(new_features.shape, new_xyz.shape)
+        if return_group_id:
+            return new_features, group_ids  # for new-xyz
         return new_features
