@@ -83,7 +83,7 @@ class PointnetPlusPartSegHRv2(seg_module):
         return input
 
     def calculate_error(self, input, output):
-        output = super(PointnetPlusPartSegHR, self).calculate_error(input, output)
+        output = super(PointnetPlusPartSegHRv2, self).calculate_error(input, output)
         if self.task_type == 'ShapeNet':
             output = ShapeNetError(input, output)
         return output
