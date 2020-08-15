@@ -77,6 +77,7 @@ class HighResolutionBlock(nn.Module):
                 else:
                     sampled_new_xyz, group_id = layer_out_dict['points'], layer_out_dict['group_id']
                     new_xyz, new_feature = model(xyz, features, grouped_ids=group_id, sampled_new_xyz=sampled_new_xyz)
+                    # print(new_xyz[0][0], sampled_new_xyz[0][0])
                 layer_out_dict['final_features'].append(new_feature)
             elif isinstance(model, PointNetFeature):
                 if 'points' not in layer_out_dict.keys():
@@ -201,6 +202,7 @@ class PointnetPlusPartSegHR(seg_module):
         if self.task_type == 'ShapeNet':
             output = ShapeNetError(input, output)
         return output
+
 
 if __name__ == "__main__":
     import sys
