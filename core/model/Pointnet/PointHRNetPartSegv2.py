@@ -63,7 +63,7 @@ class PointnetPlusPartSegHRv2(seg_module):
         layer5_feature = self.layer4(layer4_feature)
         layer6_feature = self.layer5(layer5_feature)
         layer6_feature[0]['features'] = torch.cat([layer6_feature[0]['features'], xyz_feature], dim=-1)
-        print('shape', layer6_feature[0]['features'].shape)
+        # print('shape', layer6_feature[0]['features'].shape)
         layer7_feature = self.layer6(layer6_feature)
         x = layer7_feature[0]['features']
         x = self.fc(x)

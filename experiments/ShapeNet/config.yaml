@@ -1,6 +1,6 @@
 common:
     model:
-        name: pointnet_partsegHRv2
+        name: pointnet_partsegHR
         normal_channel: True
         task_type: ShapeNet
     logs:
@@ -31,7 +31,7 @@ train:
         weight_decay: 0.0001
     lr_scheduler:
         type: lr_scheduler_step
-        step_size: 20000
+        step_size: 10000
         gamma: 0.5
         base_lr: 0.001
     transform: None # TODO
