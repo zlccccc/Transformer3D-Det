@@ -24,8 +24,9 @@ def un_zip_Tree(path, out_dir):
                 un_zip(Local, out_dir)
 
 
-dir = '/data1/zhaolichen/data/semantic3d/original_data'
-dir = 'C:/Users/ZLC/Desktop/pycodes/data/semantic3d/original_data'
+#dir = '/data1/zhaolichen/data/semantic3d/original_data'
+dir = '/data/dataset/semantic3d/original_data'
+# dir = 'C:/Users/ZLC/Desktop/pycodes/data/semantic3d/original_data'
 out_dir = dir + '/entry'
 if __name__ == '__main__':
     un_zip_Tree(dir, out_dir)

@@ -1,4 +1,5 @@
-BASE_DIR=/data1/zhaolichen/data/semantic3d/original_data
+#BASE_DIR=/data1/zhaolichen/data/semantic3d/original_data
+BASE_DIR=/data/dataset/semantic3d/original_data
 echo $BASE_DIR
 #exit()
 
