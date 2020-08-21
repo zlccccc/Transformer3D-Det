@@ -91,7 +91,7 @@ class ShapeNetDataset(Dataset):
             t_start = time.time()
             for index in range(min(self.cache_size, self.__len__())):
                 if index % 100 == 0:
-                    print('building dataset: index %d, time=%.2f' % (index, time.time()-t_start), flush=True)
+                    print('building dataset: index %d, time=%.2f' % (index, time.time() - t_start), flush=True)
                 self.__getitem__(index)
 
     def __getitem__(self, index):

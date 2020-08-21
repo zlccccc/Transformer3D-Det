@@ -22,7 +22,7 @@ class ModelNetFeatureDataset(Dataset):
             print('building dataset(during initialize)')
             for index in range(self.__len__()):
                 if index % 100 == 0:
-                    print('building dataset: index %d, time=%.2f' % (index, time.time()-t_start), flush=True)
+                    print('building dataset: index %d, time=%.2f' % (index, time.time() - t_start), flush=True)
                 self._get_item(index)
 
     def __len__(self):
@@ -39,7 +39,7 @@ class ModelNetFeatureDataset(Dataset):
             data = np.array(data)
             data[:, 3:] = data[:, 3:] / 3
             data = torch.from_numpy(data).float()
-            #data = data[:, :3]
+            # data = data[:, :3]
             data[:, :3] = 0
             cls = np.array([cls]).astype(np.int32)
             sample = {}

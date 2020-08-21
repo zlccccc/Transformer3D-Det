@@ -16,7 +16,12 @@ def iterRunner(info):
     last_iter = info['last_iter']
     t_start = time.time()
     T_START = time.time()
-    model.train_mode()  # change mode
+    if isinstance(model, torch.nn.DataParallel):
+        model.module.train_mode()
+    elif isinstance(model, torch.nn.Module):
+        model.train_mode()  # change mode
+    else:
+        raise NotImplementedError(type(model))
     print('last_iter:', last_iter)
     for iter_id in range(last_iter + 1, config.max_iter + 1):
         for tries in range(3):
@@ -56,7 +61,12 @@ def iterRunner(info):
         t_start = t_tmp
         output['lr'] = lr_scheduler.get_lr()[0]
         if iter_id % config.test_freq == 0 or iter_id % config.save_freq == 0:
-            model.val_mode()
+            if isinstance(model, torch.nn.DataParallel):
+                model.module.val_mode()
+            elif isinstance(model, torch.nn.Module):
+                model.val_mode()  # change mode
+            else:
+                raise NotImplementedError(type(model))
             output_error = {}
             error, weight, test_time = [], [], 0.
             for testset_name, loader in info['testdataloaders'].items():

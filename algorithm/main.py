@@ -52,6 +52,38 @@ def main():
     # TO CHANGE BASE_LR AND WEIGHT_DECAY (group parameters)
     base_lr = config.train.lr_scheduler.base_lr
     weight_decay = config.train.optimizer.weight_decay
+
+    # FOR MULTI-GPU USE
+    if torch.cuda.is_available:
+        print('Using Cuda!')
+        model = model.cuda()
+    if torch.cuda.device_count() > 1:
+        sync_type = 1  # syncbn; using distributed
+        if sync_type == 1:  # syncbn需要单独封装...
+            torch.cuda.set_device(args.local_rank)
+            world_size = args.ngpu
+            torch.distributed.init_process_group(
+                'nccl',
+                init_method='env://',
+                world_size=world_size,
+                rank=args.local_rank,
+            )
+            print('Using SyncBatchNorm; Change BN to SyncBN')
+            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            device = torch.device('cuda:{}'.format(args.local_rank))
+            model.to(device)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model,
+                device_ids=[args.local_rank],
+                output_device=args.local_rank,
+            )
+        else:  # cannot use syncbn
+            print('Using DataParallel')
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            print("Let's use", torch.cuda.device_count(), "GPUs!", 'USING INITIAL SYNC')
+            model = torch.nn.DataParallel(model)
+            model.to(device)
+
     parameters = model.set_params(base_lr, weight_decay)  # for grouping
     config.train.optimizer['lr'] = base_lr  # for base use (not grouped)
     optimizer = get_optimizer(config.train.optimizer, parameters)
@@ -87,34 +119,8 @@ def main():
                                                pin_memory=True)
         print('build dataset %s shape %d' % (key, len(value)))
 
-    # TODO: MULTI GPU TODO!!!
-    # if torch.cuda.device_count() > 1:
-    #     if (args.syncBN == True):
-    #         torch.cuda.set_device(args.local_rank)
-    #         world_size = args.ngpu
-    #         torch.distributed.init_process_group(
-    #             'nccl',
-    #             init_method='env://',
-    #             world_size=world_size,
-    #             rank=args.local_rank,
-    #         )
-    #         #classifier = torch.nn.SyncBatchNorm.convert_sync_batchnorm(classifier)
-    #         device = torch.device('cuda:{}'.format(args.local_rank))
-    #         model.to(device)
-    #         model = torch.nn.parallel.DistributedDataParallel(
-    #             model,
-    #             device_ids=[args.local_rank],
-    #             output_device=args.local_rank,
-    #         )
-    #     else:
-    #         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    #         print("Let's use", torch.cuda.device_count(), "GPUs!")
-    #         model = torch.nn.DataParallel(model)
-    #         model.to(device)
-
     if torch.cuda.is_available:
-        print('use cuda(gpu)')
-        model = model.cuda()
+        print('change optimizer to gpu state')
         for state in optimizer.state.values():
             for k, v in state.items():
                 if torch.is_tensor(v):

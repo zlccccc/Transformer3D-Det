@@ -20,8 +20,13 @@ def testRunner(info):
             for k, v in state.items():
                 if torch.is_tensor(v):
                     state[k] = v.cuda()
-    model.train_mode()  # change mode
-    model.val_mode()
+    # change mode
+    if isinstance(model, torch.nn.DataParallel):
+        model.module.train_mode()
+    elif isinstance(model, torch.nn.Module):
+        model.train_mode()  # change mode
+    else:
+        raise NotImplementedError(type(model))
     output_error = {}
     error, weight, test_time = [], [], 0.
     for testset_name, loader in info['testdataloaders'].items():

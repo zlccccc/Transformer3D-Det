@@ -1,8 +1,8 @@
 from .dataset.Test3DDataset import Test3DDataset
-from .dataset.ModelNetDataset import ModelNetDataset
-from .dataset.ModelNetFeatureDataset import ModelNetFeatureDataset
-from .dataset._3DSSGDataset import PCSGDataset
-from .dataset.ShapeNetDataset import ShapeNetDataset
+from .dataset.Classification3D.ModelNetDataset import ModelNetDataset
+from .dataset.Classification3D.ModelNetFeatureDataset import ModelNetFeatureDataset
+from .dataset.Language3D._3DSSGDataset import PCSGDataset
+from .dataset.Segmentation3D.ShapeNetDataset import ShapeNetDataset
 
 
 def get_one_dataset(config: dict):

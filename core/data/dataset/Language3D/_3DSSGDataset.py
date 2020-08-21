@@ -1,5 +1,3 @@
-########### DataLoader for scene graph generation using point cloud.  ###############################
-
 import numpy as np
 import warnings
 import os

@@ -3,7 +3,7 @@ import time
 
 
 def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # last_iter: for logging use
-    # val_mode
+    # must be val_mode
     all_error, n_count = 0., 0
     for it, sample in enumerate(loader):
         if next(model.parameters()).is_cuda:
