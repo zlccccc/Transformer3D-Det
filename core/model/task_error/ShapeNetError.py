@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 seg_classes = {'Earphone': [16, 17, 18], 'Motorbike': [30, 31, 32, 33, 34, 35], 'Rocket': [41, 42, 43],
                'Car': [8, 9, 10, 11], 'Laptop': [28, 29], 'Cap': [6, 7], 'Skateboard': [44, 45, 46],
@@ -78,4 +79,18 @@ def ShapeNetError(input, output):
     # for key, value in sorted(output.items()):
     #     if '(error)' in key:
     #         print(key, value, type(value))
+    # all output.items()
+    for key, value in sorted(output.items()):
+        if isinstance(value, np.ndarray):
+            output[key] = torch.from_numpy(value).type_as(out).unsqueeze(0)  # for distribute
+        elif isinstance(value, int):
+            output[key] = torch.from_numpy(np.array([value])).type_as(out).int()
+        elif isinstance(value, np.float64):
+            output[key] = torch.from_numpy(np.array([value])).type_as(out).float()
+        elif isinstance(value, torch.Tensor):
+            continue
+        else:
+            print('calculating error', key, type(value))
+            raise NotImplementedError(key, type(value))
+        # print(key, 'final size', output[key].shape)
     return output

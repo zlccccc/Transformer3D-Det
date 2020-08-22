@@ -52,13 +52,14 @@ def main():
     # TO CHANGE BASE_LR AND WEIGHT_DECAY (group parameters)
     base_lr = config.train.lr_scheduler.base_lr
     weight_decay = config.train.optimizer.weight_decay
+    parameters = model.set_params(base_lr, weight_decay)  # for grouping
 
     # FOR MULTI-GPU USE
     if torch.cuda.is_available:
         print('Using Cuda!')
         model = model.cuda()
     if torch.cuda.device_count() > 1:
-        sync_type = 1  # syncbn; using distributed
+        sync_type = 2  # syncbn; using distributed
         if sync_type == 1:  # syncbn需要单独封装...
             torch.cuda.set_device(args.local_rank)
             world_size = args.ngpu
@@ -77,14 +78,13 @@ def main():
                 device_ids=[args.local_rank],
                 output_device=args.local_rank,
             )
-        else:  # cannot use syncbn
+        else:  # cannot use syncbn; using DataParallel
             print('Using DataParallel')
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
             print("Let's use", torch.cuda.device_count(), "GPUs!", 'USING INITIAL SYNC')
             model = torch.nn.DataParallel(model)
             model.to(device)
 
-    parameters = model.set_params(base_lr, weight_decay)  # for grouping
     config.train.optimizer['lr'] = base_lr  # for base use (not grouped)
     optimizer = get_optimizer(config.train.optimizer, parameters)
     # load model pa rams

@@ -45,8 +45,14 @@ def iterRunner(info):
         t_loader = time.time()
         output = model(input)  # also could backward inside
         t_forward = time.time()
+        if isinstance(model, torch.nn.DataParallel):
+            # mutli-batch; for data-parallel-model use
+            for key, value in output.items():
+                if 'loss' in key:
+                    output[key] = torch.mean(value, dim=0)
         assert 'loss' in output.keys(), 'Key "loss" should in output.keys'
         loss = output['loss']
+        # print(loss)
         loss.backward()
         # model.average_gradients()  # multi card sync
         optimizer.step()
@@ -95,7 +101,12 @@ def iterRunner(info):
                     'lowest_error': lowest_error,
                     'optimizer': optimizer.state_dict(),
                 }, is_best, config.snapshot_save_path + '/ckpt' + '_' + str(iter_id))
-            model.train_mode()
+            if isinstance(model, torch.nn.DataParallel):
+                model.module.train_mode()
+            elif isinstance(model, torch.nn.Module):
+                model.train_mode()  # change mode
+            else:
+                raise NotImplementedError(type(model))
         lr_scheduler.step()
         loggers.update_loss(output, iter_id % config.log_freq == 0)  # TODO
     print('training: done')

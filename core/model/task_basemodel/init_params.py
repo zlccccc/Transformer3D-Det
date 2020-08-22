@@ -56,10 +56,12 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
         init.constant_(m.bias.data, 0)
     elif isinstance(m, nn.PReLU):
         pass
-    elif isinstance(m, nn.modules.container.ModuleList) or isinstance(m, nn.modules.container.Sequential):
+    elif isinstance(m, (nn.modules.container.ModuleList, nn.modules.container.Sequential, nn.modules.container.ModuleDict)):
         pass
     else:
-        print('initialize not impl', type(m))
+        if 'core.model.' not in str(type(m)):
+            print('initialize not impl', type(m))
+        pass
         # raise NotImplementedError(type(m))
 
 

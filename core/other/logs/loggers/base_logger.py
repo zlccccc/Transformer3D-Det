@@ -49,7 +49,9 @@ class logger():
                 floatvalue = float(value)
                 return '%s%.3f%s' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
             str_val = '' if not all else 'torch[' + ','.join(['%.2f' % val for val in value]) + ']'
-            floatvalue = float(np.mean(value))
+            # print('log', value) TODO
+            # print('forward ?? err? ', value)
+            floatvalue = float(torch.mean(value))
             # print(floatvalue, str_val)
             return str_val + 'arrmean{%s%.3f%s}' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
         else:
