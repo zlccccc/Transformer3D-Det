@@ -48,6 +48,7 @@ class logger():
             if value.view(-1).shape[0] == 1:
                 floatvalue = float(value)
                 return '%s%.3f%s' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
+            # print(value, value.view(-1).shape)
             str_val = '' if not all else 'torch[' + ','.join(['%.2f' % val for val in value]) + ']'
             # print('log', value) TODO
             # print('forward ?? err? ', value)

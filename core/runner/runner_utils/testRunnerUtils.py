@@ -13,12 +13,11 @@ def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # la
                 if isinstance(sample[key], torch.Tensor):
                     sample[key] = sample[key].cuda()
         output = model(sample)
-        if isinstance(model, torch.nn.DataParallel):
-            # mutli-batch; for data-parallel-model use
-            for key, value in output.items():
-                if 'error' in key or 'n_count' == key:
-                    output[key] = torch.sum(value, dim=0)
-                # print('error', key, value.shape, output[key].shape)
+        # mutli-batch; for data-parallel-model use
+        for key, value in output.items():
+            if 'error' in key or 'n_count' == key:
+                output[key] = torch.sum(value, dim=0)
+            # print('error', key, value.shape, output[key].shape)
         # print('error sum', output['error'])
         if it == 0:
             output['testset_name_out'] = testset_name
