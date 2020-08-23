@@ -156,7 +156,7 @@ class PointnetPlusPartSegHR(seg_module):
         self.layer5 = HighResolutionBlock(self.layer4.final_channels, 1)
         # layer 6: 0->0
         self.layer6 = HighResolutionBlock(self.layer5.final_channels, 1)
-        self.fc = MLP(64, [self.num_output], dropout=None, FC=nn.Conv1d, BN=nn.BatchNorm1d, ReLU=nn.PReLU)
+        self.fc = MLP(128, [self.num_output], dropout=None, FC=nn.Conv1d, BN=nn.BatchNorm1d, ReLU=nn.PReLU)
         self.init_relu = 'relu'
         self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
 
