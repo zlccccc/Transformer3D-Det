@@ -108,15 +108,21 @@ def main():
     config.train.lr_scheduler['optimizer'] = optimizer
     config.train.lr_scheduler['last_iter'] = last_iter
     lr_scheduler = get_lr_scheduler(config.train.lr_scheduler)
+    collate_fn = None
+    hasattr(train_dataset, 'collate_fn'):
+        collate_fn = train_dataset.collate_fn
     traindataloader = data.DataLoader(train_dataset, batch_size=config.train.batch_size,
                                       shuffle=True, num_workers=config.train.workers, drop_last=True,
-                                      pin_memory=True)
+                                      pin_memory=True, collate_fn=collate_fn)
     print('build dataset train shape %d' % len(train_dataset))
     testdataloaders = {}
     for key, value in test_datasets.items():
+        collate_fn = None
+        hasattr(value, 'collate_fn'):
+            collate_fn = value.collate_fn
         testdataloaders[key] = data.DataLoader(value, batch_size=config.test.batch_size,
                                                shuffle=False, num_workers=config.test.workers, drop_last=False,
-                                               pin_memory=True)
+                                               pin_memory=True, collate_fn=collate_fn)
         print('build dataset %s shape %d' % (key, len(value)))
 
     if torch.cuda.is_available:
