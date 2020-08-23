@@ -3,7 +3,7 @@ import torch
 
 # Transform Input to cuda
 def transform_input(input, inside_name=''):
-    # print('transform_input - transform insidename = ', inside_name)
+    print('transform_input - transform insidename = ', inside_name)
     if isinstance(input, torch.Tensor):
         if isinstance(input, torch.DoubleTensor):
             input = input.float()  # tofloat

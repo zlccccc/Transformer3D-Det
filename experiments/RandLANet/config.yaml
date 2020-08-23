@@ -1,7 +1,7 @@
 common:
     model:
         name: RandLANetv1
-        dataset_name: Semantic3D
+        dataset: Semantic3D
     logs:
         base_logger:
             path: log/log.txt

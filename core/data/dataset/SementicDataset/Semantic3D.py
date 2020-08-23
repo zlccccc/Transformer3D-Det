@@ -63,6 +63,7 @@ class Semantic3DDataset(torch_data.Dataset):
             self.data_list = test_files
         else:
             raise NotImplementedError(mode)
+        self.data_list = np.array(self.data_list)
         self.data_list = DP.shuffle_list(self.data_list)
 
         # Initiate containers
@@ -101,7 +102,7 @@ class Semantic3DDataset(torch_data.Dataset):
             'stgallencathedral_station6_intensity_rgb.ply': 'stgallencathedral6.labels'}
 
         self.load_sub_sampled_clouds(cfg.sub_grid_size)
-        self.init_batch_gen(mode)
+        self.init_batch_gen()
 
     def load_sub_sampled_clouds(self, sub_grid_size):  # LOAD ALL FOR GENERATE
 
@@ -143,7 +144,7 @@ class Semantic3DDataset(torch_data.Dataset):
             cloud_name = file_path.split('/')[-1][:-4]
 
             # Validation projection and labels
-            if file_path in self.val_files:
+            if self.mode == 'validation' and file_path in self.data_list:
                 proj_file = join(tree_path, '{:s}_proj.pkl'.format(cloud_name))
                 with open(proj_file, 'rb') as f:
                     proj_idx, labels = pickle.load(f)
@@ -151,7 +152,7 @@ class Semantic3DDataset(torch_data.Dataset):
                 self.val_labels += [labels]
 
             # Test projection
-            if file_path in self.test_files:
+            if self.mode == 'test' and file_path in self.data_list:
                 proj_file = join(tree_path, '{:s}_proj.pkl'.format(cloud_name))
                 with open(proj_file, 'rb') as f:
                     proj_idx, labels = pickle.load(f)
@@ -223,7 +224,7 @@ class Semantic3DDataset(torch_data.Dataset):
                 np.array([cloud_idx], dtype=np.int32))
 
     def downsample_map(self, batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_idx):
-        batch_features = self.torch_augment_input(batch_xyz, batch_features)
+        batch_features = self.torch_augment_input((batch_xyz, batch_features))
         input_points = []
         input_neighbors = []
         input_pools = []
@@ -291,13 +292,13 @@ class Semantic3DDataset(torch_data.Dataset):
     def __len__(self):
         return self.num_per_epoch  # iter per epoch
 
-    def __getitem__(self, item):
+    def __getitem__(self, index):
         # queried_pc_xyz,
         # queried_pc_colors.astype(np.float32),
         # queried_pc_labels,
         # query_idx.astype(np.int32),
         # np.array([cloud_idx])
-        selected_pc, selected_colors, selected_labels, selected_idx, cloud_ind = self.spatially_regular_gen(item)
+        selected_pc, selected_colors, selected_labels, selected_idx, cloud_ind = self.spatially_regular_gen()
         return selected_pc, selected_colors, selected_labels, selected_idx, cloud_ind
 
     def collate_fn(self, batch):  # MUST DO IT; AS KD is BATCHWISE

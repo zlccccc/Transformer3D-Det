@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .utils import pytorch_utils as pt_utils
+from .utils.helper_tool import ConfigSemanticKITTI, ConfigS3DIS, ConfigSemantic3D
 from .utils.helper_tool import DataProcessing as DP
 import numpy as np
 from sklearn.metrics import confusion_matrix
@@ -11,8 +12,11 @@ from core.model.task_basemodel.taskmodel.seg_model import seg_module
 class RandLANetv1(seg_module):
     def __init__(self, config):
         super().__init__()
-        self.config = config
-        dataset_name = config.get('dataset', 'SemanticKITTI')
+        dataset_name = config.get('dataset', 'SemanticKITTI')  # ONLY GET NAME
+        if dataset_name == 'Semantic3D':
+            self.config = ConfigSemantic3D
+        else:
+            raise NotImplementedError(dataset_name)
         self.class_weights = DP.get_class_weights(dataset_name)
 
         self.fc0 = pt_utils.Conv1d(3, 8, kernel_size=1, bn=True)
