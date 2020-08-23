@@ -5,10 +5,10 @@ import pytorch_utils as pt_utils
 from .utils.helper_tool import DataProcessing as DP
 import numpy as np
 from sklearn.metrics import confusion_matrix
-from core.model.
+from core.model.task_basemodel.taskmodel.seg_model import seg_module
 
 
-class RandLANetv1():
+class RandLANetv1(seg_module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -42,9 +42,9 @@ class RandLANetv1():
         self.dropout = nn.Dropout(0.5)
         self.fc3 = pt_utils.Conv2d(32, self.config.num_classes, kernel_size=(1, 1), bn=False, activation=None)
 
-    def _forward(self, end_points):
+    def _forward(self, inputs):
 
-        features = end_points['features']  # Batch*channel*npoints
+        features = inputs['features']  # Batch*channel*npoints
         features = self.fc0(features)
 
         features = features.unsqueeze(dim=3)  # Batch*channel*npoints*1
@@ -52,9 +52,9 @@ class RandLANetv1():
         # ###########################Encoder############################
         f_encoder_list = []
         for i in range(self.config.num_layers):
-            f_encoder_i = self.dilated_res_blocks[i](features, end_points['xyz'][i], end_points['neigh_idx'][i])
+            f_encoder_i = self.dilated_res_blocks[i](features, inputs['xyz'][i], inputs['neigh_idx'][i])
 
-            f_sampled_i = self.random_sample(f_encoder_i, end_points['sub_idx'][i])
+            f_sampled_i = self.random_sample(f_encoder_i, inputs['sub_idx'][i])
             features = f_sampled_i
             if i == 0:
                 f_encoder_list.append(f_encoder_i)
@@ -66,7 +66,7 @@ class RandLANetv1():
         # ###########################Decoder############################
         f_decoder_list = []
         for j in range(self.config.num_layers):
-            f_interp_i = self.nearest_interpolation(features, end_points['interp_idx'][-j - 1])
+            f_interp_i = self.nearest_interpolation(features, inputs['interp_idx'][-j - 1])
             f_decoder_i = self.decoder_blocks[j](torch.cat([f_encoder_list[-j - 2], f_interp_i], dim=1))
 
             features = f_decoder_i
@@ -79,8 +79,9 @@ class RandLANetv1():
         features = self.fc3(features)
         f_out = features.squeeze(3)
 
-        end_points['logits'] = f_out
-        return end_points
+        output = {}
+        output['value'] = f_out
+        return output
 
     @staticmethod
     def random_sample(feature, pool_idx):

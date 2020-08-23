@@ -1,17 +1,13 @@
 import torch
 import time
+from .utils import transform_input
 
 
 def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # last_iter: for logging use
     # must be val_mode
     all_error, n_count = 0., 0
     for it, sample in enumerate(loader):
-        if next(model.parameters()).is_cuda:
-            for key in sample.keys():
-                if isinstance(sample[key], torch.DoubleTensor):
-                    sample[key] = sample[key].float()
-                if isinstance(sample[key], torch.Tensor):
-                    sample[key] = sample[key].cuda()
+        sample = transform_input(sample)
         output = model(sample)
         # mutli-batch; for data-parallel-model use
         for key, value in output.items():

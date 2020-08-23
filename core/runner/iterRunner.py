@@ -1,4 +1,5 @@
 from core.utils.utils import save_checkpoint
+from .runner_utils.utils import transform_input
 from .runner_utils.testRunnerUtils import testmodel
 import torch
 import time
@@ -35,12 +36,7 @@ def iterRunner(info):
                     print('dataloader exception', str(e))
                     print(traceback.format_exc())
                 train_loader_iter = iter(info['traindataloader'])
-        if next(model.parameters()).is_cuda:
-            for key in input.keys():
-                if isinstance(input[key], torch.DoubleTensor):
-                    input[key] = input[key].float()  # tofloat
-                if isinstance(input[key], torch.Tensor):
-                    input[key] = input[key].cuda()
+        input = transform_input(input)
         optimizer.zero_grad()
         t_loader = time.time()
         output = model(input)  # also could backward inside

@@ -3,6 +3,7 @@ from .dataset.Classification3D.ModelNetDataset import ModelNetDataset
 from .dataset.Classification3D.ModelNetFeatureDataset import ModelNetFeatureDataset
 from .dataset.Language3D._3DSSGDataset import PCSGDataset
 from .dataset.Segmentation3D.ShapeNetDataset import ShapeNetDataset
+from .dataset.SementicDataset.Semantic3D import Semantic3DDataset
 
 
 def get_one_dataset(config: dict):
@@ -19,6 +20,8 @@ def get_one_dataset(config: dict):
         return PCSGDataset(**config)
     elif name == 'ShapeNetDataset':
         return ShapeNetDataset(**config)
+    elif name == 'Semantic3DDataset':
+        return Semantic3DDataset(**config)
     else:
         raise NotImplementedError(name)
 

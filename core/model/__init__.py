@@ -4,6 +4,7 @@ from .Bow_model import model_entry as BowModel
 from .Pointnet import model_entry as Pointnet
 from .PointnetYanx27 import model_entry as PointnetInitial
 from .SGmodel import model_entry as SGmodel
+from .RandLANet import model_entry as RandLANet
 
 
 model_entry_name = [
@@ -11,6 +12,7 @@ model_entry_name = [
     PointnetInitial,
     BowModel,
     SGmodel,
+    RandLANet,
 ]
 
 
