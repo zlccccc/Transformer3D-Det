@@ -25,8 +25,8 @@ train:
     workers: 0
     dataset:
         name: Semantic3DDataset
-        mode: train
-        root: /data/dataset/semantic3d
+        mode: training
+        data_path: /data/dataset/semantic3d
     optimizer:
         name: Adam
         betas: [0.9, 0.999]
@@ -51,5 +51,5 @@ test:
     dataset:
         testset:
             name: Semantic3DDataset
-            mode: validate
-            root: /data/dataset/semantic3d
+            mode: validation
+            data_path: /data/dataset/semantic3d

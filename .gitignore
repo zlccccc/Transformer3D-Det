@@ -7,3 +7,7 @@ log.txt
 snapshot/
 *.pth.tar
 log/
+lib/
+build/
+*.so
+*.swp

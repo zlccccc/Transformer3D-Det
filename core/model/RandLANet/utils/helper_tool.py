@@ -1,5 +1,5 @@
-import nearest_neighbors.lib.python.nearest_neighbors as nearest_neighbors
-import cpp_wrappers.cpp_subsampling.grid_subsampling as cpp_subsampling
+from .nearest_neighbors.lib.python import nearest_neighbors as nearest_neighbors
+from .cpp_wrappers.cpp_subsampling import grid_subsampling as cpp_subsampling
 from open3d import linux as open3d
 from os.path import join
 import numpy as np

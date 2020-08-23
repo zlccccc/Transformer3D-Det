@@ -12,7 +12,7 @@ import torch
 class Semantic3DDataset(torch_data.Dataset):
     def __init__(self, mode, data_path):
         self.name = 'Semantic3D'
-        self.dataset_path = data_path
+        self.path = data_path
         self.label_to_names = {0: 'unlabeled',
                                1: 'man-made terrain',
                                2: 'natural terrain',
@@ -61,6 +61,8 @@ class Semantic3DDataset(torch_data.Dataset):
             self.data_list = val_files
         elif mode == 'test':
             self.data_list = test_files
+        else:
+            raise NotImplementedError(mode)
         self.data_list = DP.shuffle_list(self.data_list)
 
         # Initiate containers
