@@ -15,7 +15,7 @@ class HighResolutionBlock(nn.Module):
         self.moduledict = nn.ModuleDict()
         self.in_channels = in_channels  # for feature
         self.final_channels = [0 for i in range(out_length)]
-        fc_channels = [64, 128, 256, 1024]
+        fc_channels = [128, 128, 256, 1024]
         for id, channel in enumerate(in_channels):
             module_name = "%d" % id
             if id < len(fc_channels):
@@ -36,7 +36,7 @@ class HighResolutionBlock(nn.Module):
 
     def _make_block_layer(self, layer_in_id: int, layer_out_id: int, in_channel, module_name, way):
         if layer_in_id == layer_out_id:  # self mlp none?
-            out_channels = [64, 128, 256]
+            out_channels = [128, 128, 256]  # TODO FC CHANNEL
             if layer_in_id < len(out_channels):
                 fin = out_channels[layer_in_id]
                 nowmodel = MLP(in_channel, [fin, fin], dropout=None, FC=nn.Conv1d, BN=nn.BatchNorm1d, ReLU=nn.PReLU)  # self64+down128
