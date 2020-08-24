@@ -2,9 +2,10 @@ import torch
 
 
 # Transform Input to cuda
-def transform_input(input, inside_name=''):
-    print('transform_input - transform insidename = ', inside_name)
+def transform_input(input, inside_name='input'):
+    shape = ''
     if isinstance(input, torch.Tensor):
+        shape = input.shape
         if isinstance(input, torch.DoubleTensor):
             input = input.float()  # tofloat
         if torch.cuda.is_available:
@@ -20,4 +21,5 @@ def transform_input(input, inside_name=''):
         raise NotImplementedError('unable to change input %s' % inside_name)
     else:
         raise NotImplementedError(type(input))
+    print('transform_input - transform insidename = ', inside_name, shape)
     return input

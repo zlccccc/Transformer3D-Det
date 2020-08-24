@@ -11,7 +11,7 @@ class seg_module(base_module):
         gt = input['seg']
         out = output['value']
         gt = gt.view(gt.shape[0], gt.shape[1])
-        # print(out.shape, gt.shape, '<<< shape')
+        print(out.shape, gt.shape, '<<< shape')
         # out = torch.log_softmax(out, dim=-1)
         # output['seg_loss'] = F.nll_loss(out, gt)
         # TODO: CHECK IT (change error calculating)

@@ -2,6 +2,7 @@ common:
     model:
         name: RandLANetv1
         dataset: Semantic3D
+        feature_channel: 6
     logs:
         base_logger:
             path: log/log.txt

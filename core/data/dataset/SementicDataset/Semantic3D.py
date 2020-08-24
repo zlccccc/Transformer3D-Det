@@ -1,6 +1,6 @@
-# from core.model.RandLANet.utils.helper_tool import DataProcessing as DP
-# from core.model.RandLANet.utils.helper_tool import ConfigSemantic3D as cfg
-# from .utils.helper_ply import read_ply
+from core.model.RandLANet.utils.helper_tool import DataProcessing as DP
+from core.model.RandLANet.utils.helper_tool import ConfigSemantic3D as cfg
+from .utils.helper_ply import read_ply
 from os.path import join, exists
 import numpy as np
 import os
@@ -225,7 +225,11 @@ class Semantic3DDataset(torch_data.Dataset):
                 np.array([cloud_idx], dtype=np.int32))
 
     def downsample_map(self, batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_idx):
-        batch_features = self.np_augment_input((batch_xyz, batch_features))
+        final_features = []
+        for i in range(batch_xyz.shape[0]):
+            final_features.append(self.np_augment_input((batch_xyz[i], batch_features[i]))[np.newaxis, :])
+        batch_features = np.concatenate(final_features, axis=0)
+        # print('features shape', batch_features.shape)
         input_points = []
         input_neighbors = []
         input_pools = []
@@ -252,6 +256,7 @@ class Semantic3DDataset(torch_data.Dataset):
     def np_augment_input(inputs):
         xyz = inputs[0]
         features = inputs[1]
+        # print('transform shape', xyz.shape, features.shape)
         theta = np.random.rand(1,) * 2 * np.pi
         # Rotation matrices
         c, s = np.cos(theta), np.sin(theta)
@@ -287,6 +292,7 @@ class Semantic3DDataset(torch_data.Dataset):
         noise = np.random.normal(size=transformed_xyz.shape, scale=cfg.augment_noise)  # scale: stddev
         transformed_xyz = transformed_xyz + noise
         rgb = features[:, :3]
+        # print(transformed_xyz.shape, features.shape)
         stacked_features = np.concatenate([transformed_xyz, rgb], axis=-1)
         return stacked_features
 
@@ -312,7 +318,7 @@ class Semantic3DDataset(torch_data.Dataset):
             cloud_ind.append(batch[i][4])
 
         selected_pc = np.stack(selected_pc)
-        selected_colors = np.stack(selected_labels)
+        selected_colors = np.stack(selected_colors)
         selected_labels = np.stack(selected_labels)
         selected_idx = np.stack(selected_idx)
         cloud_ind = np.stack(cloud_ind)
@@ -337,6 +343,8 @@ class Semantic3DDataset(torch_data.Dataset):
         inputs['labels'] = torch.from_numpy(flat_inputs[4 * num_layers + 1]).long()
         inputs['input_inds'] = torch.from_numpy(flat_inputs[4 * num_layers + 2]).long()
         inputs['cloud_inds'] = torch.from_numpy(flat_inputs[4 * num_layers + 3]).long()
+
+        inputs['seg'] = inputs['labels'].unsqueeze(-1)  # just for loss and compute use
         return inputs
 
 
