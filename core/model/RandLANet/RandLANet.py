@@ -1,19 +1,25 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import .utils.pytorch_utils as pt_utils
+from .utils import pytorch_utils as pt_utils
+from .utils.helper_tool import ConfigSemanticKITTI, ConfigS3DIS, ConfigSemantic3D
 from .utils.helper_tool import DataProcessing as DP
 import numpy as np
 from sklearn.metrics import confusion_matrix
 
 
-class RandLANetv1(nn.Module):
+class RandLANet(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.config = config
-        self.class_weights = DP.get_class_weights('SemanticKITTI')
+        dataset_name = config.get('dataset', 'SemanticKITTI')  # ONLY GET NAME
+        feature_channel = config.get('feature_channel', 3)
+        if dataset_name == 'Semantic3D':
+            self.config = ConfigSemantic3D
+        else:
+            raise NotImplementedError(dataset_name)
+        self.class_weights = DP.get_class_weights(dataset_name)
 
-        self.fc0 = pt_utils.Conv1d(3, 8, kernel_size=1, bn=True)
+        self.fc0 = pt_utils.Conv1d(feature_channel, 8, kernel_size=1, bn=True)
 
         self.dilated_res_blocks = nn.ModuleList()
         d_in = 8
@@ -27,22 +33,23 @@ class RandLANetv1(nn.Module):
 
         self.decoder_blocks = nn.ModuleList()
         for j in range(self.config.num_layers):
-            if j < 3:
+            if j != self.config.num_layers - 1:
                 d_in = d_out + 2 * self.config.d_out[-j - 2]
                 d_out = 2 * self.config.d_out[-j - 2]
             else:
-                d_in = 4 * self.config.d_out[-4]
-                d_out = 2 * self.config.d_out[-4]
+                d_in = 4 * self.config.d_out[0]
+                d_out = 2 * self.config.d_out[0]
             self.decoder_blocks.append(pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True))
+            # print('decoder block', d_in, d_out)
 
         self.fc1 = pt_utils.Conv2d(d_out, 64, kernel_size=(1, 1), bn=True)
         self.fc2 = pt_utils.Conv2d(64, 32, kernel_size=(1, 1), bn=True)
         self.dropout = nn.Dropout(0.5)
         self.fc3 = pt_utils.Conv2d(32, self.config.num_classes, kernel_size=(1, 1), bn=False, activation=None)
 
-    def forward(self, end_points):
+    def forward(self, inputs):
 
-        features = end_points['features']  # Batch*channel*npoints
+        features = inputs['features']  # Batch*channel*npoints
         features = self.fc0(features)
 
         features = features.unsqueeze(dim=3)  # Batch*channel*npoints*1
@@ -50,10 +57,11 @@ class RandLANetv1(nn.Module):
         # ###########################Encoder############################
         f_encoder_list = []
         for i in range(self.config.num_layers):
-            f_encoder_i = self.dilated_res_blocks[i](features, end_points['xyz'][i], end_points['neigh_idx'][i])
+            f_encoder_i = self.dilated_res_blocks[i](features, inputs['xyz'][i], inputs['neigh_idx'][i])
 
-            f_sampled_i = self.random_sample(f_encoder_i, end_points['sub_idx'][i])
+            f_sampled_i = self.random_sample(f_encoder_i, inputs['sub_idx'][i])
             features = f_sampled_i
+            # print('downsample encoder feature shape', features.shape)
             if i == 0:
                 f_encoder_list.append(f_encoder_i)
             f_encoder_list.append(f_sampled_i)
@@ -64,10 +72,11 @@ class RandLANetv1(nn.Module):
         # ###########################Decoder############################
         f_decoder_list = []
         for j in range(self.config.num_layers):
-            f_interp_i = self.nearest_interpolation(features, end_points['interp_idx'][-j - 1])
+            f_interp_i = self.nearest_interpolation(features, inputs['interp_idx'][-j - 1])
             f_decoder_i = self.decoder_blocks[j](torch.cat([f_encoder_list[-j - 2], f_interp_i], dim=1))
 
             features = f_decoder_i
+            # print('upsample decoder feature shape', features.shape)
             f_decoder_list.append(f_decoder_i)
         # ###########################Decoder############################
 
@@ -77,8 +86,13 @@ class RandLANetv1(nn.Module):
         features = self.fc3(features)
         f_out = features.squeeze(3)
 
-        end_points['logits'] = f_out
-        return end_points
+        output = {}
+        # output['value'] = f_out.permute(0, 2, 1).clone()
+        output['logits'] = f_out
+        # print(f_out.shape)
+        # f_out.mean().backward()
+        # exit(0)
+        return output
 
     @staticmethod
     def random_sample(feature, pool_idx):
