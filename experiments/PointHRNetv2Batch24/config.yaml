@@ -37,7 +37,7 @@ train:
     transform: None # TODO
     runner:
         name: iteration
-        max_iter: 100000
+        max_iter: 200000
         # test and save
         test_freq: 1000
         save_freq: 100000

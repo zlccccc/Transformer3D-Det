@@ -1,12 +1,13 @@
-from core.model.RandLANet.utils.helper_tool import DataProcessing as DP
-from core.model.RandLANet.utils.helper_tool import ConfigSemantic3D as cfg
-from .utils.helper_ply import read_ply
+# from core.model.RandLANet.utils.helper_tool import DataProcessing as DP
+# from core.model.RandLANet.utils.helper_tool import ConfigSemantic3D as cfg
+# from .utils.helper_ply import read_ply
 from os.path import join, exists
 import numpy as np
 import os
 import pickle
 import torch.utils.data as torch_data
 import torch
+import random
 
 
 class Semantic3DDataset(torch_data.Dataset):
@@ -224,7 +225,7 @@ class Semantic3DDataset(torch_data.Dataset):
                 np.array([cloud_idx], dtype=np.int32))
 
     def downsample_map(self, batch_xyz, batch_features, batch_labels, batch_pc_idx, batch_cloud_idx):
-        batch_features = self.torch_augment_input((batch_xyz, batch_features))
+        batch_features = self.np_augment_input((batch_xyz, batch_features))
         input_points = []
         input_neighbors = []
         input_pools = []
@@ -248,45 +249,45 @@ class Semantic3DDataset(torch_data.Dataset):
 
     # data augmentation
     @staticmethod
-    def torch_augment_input(inputs):
+    def np_augment_input(inputs):
         xyz = inputs[0]
         features = inputs[1]
-        theta = torch.random_uniform((1,), minval=0, maxval=2 * np.pi)
+        theta = np.random.rand(1,) * 2 * np.pi
         # Rotation matrices
-        c, s = torch.cos(theta), torch.sin(theta)
-        cs0 = torch.zeros_like(c)
-        cs1 = torch.ones_like(c)
-        R = torch.stack([c, -s, cs0, s, c, cs0, cs0, cs0, cs1], axis=1)
-        stacked_rots = torch.reshape(R, (3, 3))
+        c, s = np.cos(theta), np.sin(theta)
+        cs0 = np.zeros_like(c)
+        cs1 = np.ones_like(c)
+        R = np.stack([c, -s, cs0, s, c, cs0, cs0, cs0, cs1], axis=1)
+        stacked_rots = np.reshape(R, (3, 3))
 
         # Apply rotations
-        transformed_xyz = torch.reshape(torch.matmul(xyz, stacked_rots), [-1, 3])
+        transformed_xyz = np.reshape(np.matmul(xyz, stacked_rots), [-1, 3])
         # Choose random scales for each example
         min_s = cfg.augment_scale_min
         max_s = cfg.augment_scale_max
         if cfg.augment_scale_anisotropic:
-            s = torch.random_uniform((1, 3), minval=min_s, maxval=max_s)
+            s = np.random.rand(1, 3) * (max_s - min_s) + min_s
         else:
-            s = torch.random_uniform((1, 1), minval=min_s, maxval=max_s)
+            s = np.random.rand(1, 3) * (max_s - min_s) + min_s
 
         symmetries = []
         for i in range(3):
             if cfg.augment_symmetries[i]:
-                symmetries.append(torch.round(torch.random_uniform((1, 1))) * 2 - 1)
+                symmetries.append(np.round(np.random.rand(1, 1)) * 2 - 1)
             else:
-                symmetries.append(torch.ones([1, 1], dtype=torch.float32))
-        s *= torch.concat(symmetries, 1)
+                symmetries.append(np.ones([1, 1], dtype=np.float32))
+        s *= np.concatenate(symmetries, 1)
 
         # Create N x 3 vector of scales to multiply with stacked_points
-        stacked_scales = torch.tile(s, [torch.shape(transformed_xyz)[0], 1])
+        stacked_scales = np.tile(s, [np.shape(transformed_xyz)[0], 1])
 
         # Apply scales
         transformed_xyz = transformed_xyz * stacked_scales
 
-        noise = torch.random_normal(torch.shape(transformed_xyz), stddev=cfg.augment_noise)
+        noise = np.random.normal(size=transformed_xyz.shape, scale=cfg.augment_noise)  # scale: stddev
         transformed_xyz = transformed_xyz + noise
         rgb = features[:, :3]
-        stacked_features = torch.concat([transformed_xyz, rgb], axis=-1)
+        stacked_features = np.concatenate([transformed_xyz, rgb], axis=-1)
         return stacked_features
 
     def __len__(self):
@@ -337,3 +338,44 @@ class Semantic3DDataset(torch_data.Dataset):
         inputs['input_inds'] = torch.from_numpy(flat_inputs[4 * num_layers + 2]).long()
         inputs['cloud_inds'] = torch.from_numpy(flat_inputs[4 * num_layers + 3]).long()
         return inputs
+
+
+if __name__ == '__main__':
+    xyz = np.random.rand(100, 3)
+    col = np.random.rand(100, 3)
+
+    class ConfigSemantic3D:
+        k_n = 16  # KNN
+        num_layers = 5  # Number of layers
+        num_points = 65536  # Number of input points
+        num_classes = 8  # Number of valid classes
+        sub_grid_size = 0.06  # preprocess_parameter
+
+        batch_size = 4  # batch_size during training
+        val_batch_size = 16  # batch_size during validation and test
+        train_steps = 500  # Number of steps per epochs
+        val_steps = 100  # Number of validation steps per epoch
+
+        sub_sampling_ratio = [4, 4, 4, 4, 2]  # sampling ratio of random sampling at each layer
+        d_out = [16, 64, 128, 256, 512]  # feature dimension
+
+        noise_init = 3.5  # noise initial parameter
+        max_epoch = 100  # maximum epoch during training
+        learning_rate = 1e-2  # initial learning rate
+        lr_decays = {i: 0.95 for i in range(0, 500)}  # decay rate of learning rate
+
+        train_sum_dir = 'train_log'
+        saving = True
+        saving_path = None
+
+        augment_scale_anisotropic = True
+        augment_symmetries = [True, False, False]
+        augment_rotation = 'vertical'
+        augment_scale_min = 0.8
+        augment_scale_max = 1.2
+        augment_noise = 0.001
+        augment_occlusion = 'none'
+        augment_color = 0.8
+    cfg = ConfigSemantic3D
+    feat = Semantic3DDataset.np_augment_input((xyz, col))
+    print(feat)
