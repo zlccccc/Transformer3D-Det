@@ -35,7 +35,7 @@ class logger():
         return value
 
     def __to_string(self, value, all=True, ForeColor=Fore.LIGHTWHITE_EX):
-        if isinstance(value, float):
+        if isinstance(value, (float, int)):
             floatvalue = float(value)
             return '%s%.3f%s' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
         elif isinstance(value, np.ndarray):

@@ -23,7 +23,7 @@ train:
     # learning_rate = 1e-2  # initial learning rate
     # lr_decays = {i: 0.95 for i in range(0, 500)}  # decay rate of learning rate
     batch_size: 4
-    workers: 0
+    workers: 4
     dataset:
         name: Semantic3DDataset
         mode: training
@@ -42,12 +42,12 @@ train:
         name: iteration
         max_iter: 100000
         # test and save
-        test_freq: 500
+        test_freq: 1000
         save_freq: 100000
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 1
+    batch_size: 2
     workers: 0
     dataset:
         testset:

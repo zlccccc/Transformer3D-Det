@@ -104,6 +104,9 @@ class Semantic3DDataset(torch_data.Dataset):
 
         self.load_sub_sampled_clouds(cfg.sub_grid_size)
         self.init_batch_gen()
+        # FOR LOSS COMPUTING
+        cfg.ignored_label_inds = [self.label_to_idx[ign_label] for ign_label in self.ignored_labels]
+        cfg.class_weights = DP.get_class_weights('Semantic3D')
 
     def load_sub_sampled_clouds(self, sub_grid_size):  # LOAD ALL FOR GENERATE
 
@@ -165,7 +168,8 @@ class Semantic3DDataset(torch_data.Dataset):
     def init_batch_gen(self):
         split = self.mode
         if split == 'training':
-            self.num_per_epoch = cfg.train_steps * cfg.batch_size
+            numworker = 4
+            self.num_per_epoch = cfg.train_steps * cfg.batch_size * numworker
         elif split == 'validation':
             self.num_per_epoch = cfg.val_steps * cfg.val_batch_size
         elif split == 'test':

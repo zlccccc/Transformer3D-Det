@@ -25,15 +25,16 @@ class RandLANetv1(base_module):
 
     def calculate_loss(self, input, output):
         output['labels'] = input['labels']
-        output = compute_loss(output, self.config)
-        output = compute_acc(output)
+        loss, output = compute_loss(output, self.config)
+        acc, output = compute_acc(output)
         output['acc(loss)'] = output['acc']
         return output
 
     def calculate_error(self, input, output):
         output['labels'] = input['labels']
-        output = compute_loss(output, self.config)
-        output = compute_acc(output)
+        loss, output = compute_loss(output, self.config)
+        del output['loss']
+        acc, output = compute_acc(output)
         output['acc(error)'] = output['acc']
         output['acc(error_count)'] = 1
         output['error'] = 1 - output['acc(error)']

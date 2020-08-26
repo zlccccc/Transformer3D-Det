@@ -21,5 +21,5 @@ def transform_input(input, inside_name='input'):
         raise NotImplementedError('unable to change input %s' % inside_name)
     else:
         raise NotImplementedError(type(input))
-    print('transform_input - transform insidename = ', inside_name, shape)
+    # print('transform_input - transform insidename = ', inside_name, shape)
     return input

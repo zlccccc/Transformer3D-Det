@@ -128,11 +128,13 @@ class RandLANet(nn.Module):
 
 
 def compute_acc(end_points):
-
     logits = end_points['valid_logits']
     labels = end_points['valid_labels']
     logits = logits.max(dim=1)[1]
-    acc = (logits == labels).sum().float() / float(labels.shape[0])
+    if labels.shape[0] != 0:
+        acc = (logits == labels).sum().float() / float(labels.shape[0])
+    else:
+        acc = 0
     end_points['acc'] = acc
     return acc, end_points
 
@@ -285,8 +287,12 @@ def compute_loss(end_points, cfg):
 
 def get_loss(logits, labels, pre_cal_weights):
     # calculate the weighted cross entropy according to the inverse frequency
-    class_weights = torch.from_numpy(pre_cal_weights).float().cuda()
+    class_weights = torch.from_numpy(pre_cal_weights).type_as(logits)
     # one_hot_labels = F.one_hot(labels, self.config.num_classes)
+    # print(logits.shape, labels.shape, pre_cal_weights.shape)
+    if logits.shape[0] == 0:
+        print('get_loss: with shape zero', flush=True)
+        return torch.Tensor(1).type_as(logits).mean()
 
     criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='none')
     output_loss = criterion(logits, labels)
