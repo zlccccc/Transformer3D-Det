@@ -79,6 +79,7 @@ class ConfigSemantic3D:
     # val_batch_size = 16  # batch_size during validation and test
     val_batch_size = 2  # batch_size during validation and test
     train_steps = 500  # Number of steps per epochs
+    train_steps = 10000000  # Number of steps per epochs ; JUST FOR TRAINING(DO NOT CLEAN)
     val_steps = 100  # Number of validation steps per epoch
 
     sub_sampling_ratio = [4, 4, 4, 4, 2]  # sampling ratio of random sampling at each layer

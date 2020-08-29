@@ -47,7 +47,8 @@ class Semantic3DDataset(torch_data.Dataset):
             else:
                 test_files.append(join(self.full_pc_folder, pc_name + '.ply'))
 
-        tmp_training_files = train_files
+        tmp_training_files = np.sort(train_files)
+        # print('tag tmp', tmp_training_files, len(tmp_training_files))
         train_files = []
         for i, file_path in enumerate(tmp_training_files):
             if self.all_splits[i] == self.val_split:
@@ -55,6 +56,9 @@ class Semantic3DDataset(torch_data.Dataset):
             else:
                 train_files.append(file_path)
 
+        train_files = np.array(train_files)
+        test_files = np.sort(test_files)
+        val_files = np.array(val_files)
         self.mode = mode
         if mode == 'training':
             self.data_list = train_files
@@ -64,8 +68,7 @@ class Semantic3DDataset(torch_data.Dataset):
             self.data_list = test_files
         else:
             raise NotImplementedError(mode)
-        self.data_list = np.array(self.data_list)
-        self.data_list = DP.shuffle_list(self.data_list)
+        # print('tag ZERO', self.mode, len(self.data_list), self.data_list)
 
         # Initiate containers
         self.val_proj = []
@@ -103,10 +106,11 @@ class Semantic3DDataset(torch_data.Dataset):
             'stgallencathedral_station6_intensity_rgb.ply': 'stgallencathedral6.labels'}
 
         self.load_sub_sampled_clouds(cfg.sub_grid_size)
-        self.init_batch_gen()
+        self.init_batch_gen()  # should be done in worker
         # FOR LOSS COMPUTING
         cfg.ignored_label_inds = [self.label_to_idx[ign_label] for ign_label in self.ignored_labels]
         cfg.class_weights = DP.get_class_weights('Semantic3D')
+        # print('tag 1', self.mode, len(self.data_list), self.data_list)
 
     def load_sub_sampled_clouds(self, sub_grid_size):  # LOAD ALL FOR GENERATE
 
@@ -168,20 +172,27 @@ class Semantic3DDataset(torch_data.Dataset):
     def init_batch_gen(self):
         split = self.mode
         if split == 'training':
-            numworker = 4
+            numworker = 1
             self.num_per_epoch = cfg.train_steps * cfg.batch_size * numworker
         elif split == 'validation':
             self.num_per_epoch = cfg.val_steps * cfg.val_batch_size
         elif split == 'test':
             self.num_per_epoch = cfg.val_steps * cfg.val_batch_size
+        self.batch_gen_random_worker_init = False
 
+    def init_batch_gen_random_worker(self):
+        split = self.mode
+        if self.batch_gen_random_worker_init:
+            return
+        print('Initialize: Random batch gen worker!', split, flush=True)
+        self.batch_gen_random_worker_init = True
         # Reset possibility
         self.possibility[split] = []
         self.min_possibility[split] = []
         self.class_weight[split] = []
 
         # Random initialize (for every point)
-        for i, tree in enumerate(self.input_trees[split]):
+        for i, tree in enumerate(self.input_trees[split]): # !!! not right
             self.possibility[split] += [np.random.rand(tree.data.shape[0]) * 1e-3]
             self.min_possibility[split] += [float(np.min(self.possibility[split][-1]))]
 
@@ -309,6 +320,7 @@ class Semantic3DDataset(torch_data.Dataset):
         # queried_pc_labels,
         # query_idx.astype(np.int32),
         # np.array([cloud_idx])
+        self.init_batch_gen_random_worker()
         selected_pc, selected_colors, selected_labels, selected_idx, cloud_ind = self.spatially_regular_gen()
         return selected_pc, selected_colors, selected_labels, selected_idx, cloud_ind
 
@@ -320,6 +332,7 @@ class Semantic3DDataset(torch_data.Dataset):
             selected_labels.append(batch[i][2])
             selected_idx.append(batch[i][3])
             cloud_ind.append(batch[i][4])
+        # print('tag 2, collect,', cloud_ind, flush=True)
 
         selected_pc = np.stack(selected_pc)
         selected_colors = np.stack(selected_colors)

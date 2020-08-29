@@ -1,4 +1,5 @@
 # __init__ codes
+import torch
 import torch.nn as nn
 from abc import abstractmethod
 
@@ -26,10 +27,14 @@ class base_module(nn.Module):
         pass
 
     def train_mode(self):
+        if torch.cuda.is_available: # not useful?
+            torch.cuda.empty_cache()
         self.mode = 'train'
         self.train()
 
     def val_mode(self):
+        if torch.cuda.is_available: # not useful?
+            torch.cuda.empty_cache()
         self.mode = 'test'
         self.eval()
 

@@ -24,15 +24,18 @@ def iterRunner(info):
     else:
         raise NotImplementedError(type(model))
     print('last_iter:', last_iter)
+    max_tries = 3
     for iter_id in range(last_iter + 1, config.max_iter + 1):
-        for tries in range(3):
+        for tries in range(max_tries):
             try:
                 input = next(train_loader_iter)
                 break
             except Exception as e:
                 if isinstance(e, StopIteration):
-                    print('Start A New Epoch')
+                    print('Start A New Epoch', flush=True)
                 else:
+                    if tries == max_tries - 1:
+                        raise e
                     print('dataloader exception', str(e))
                     print(traceback.format_exc())
                 train_loader_iter = iter(info['traindataloader'])
