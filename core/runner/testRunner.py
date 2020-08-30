@@ -22,9 +22,9 @@ def testRunner(info):
                     state[k] = v.cuda()
     # change mode
     if isinstance(model, torch.nn.DataParallel):
-        model.module.train_mode()
+        model.module.val_mode()
     elif isinstance(model, torch.nn.Module):
-        model.train_mode()  # change mode
+        model.val_mode()  # change mode
     else:
         raise NotImplementedError(type(model))
     output_error = {}

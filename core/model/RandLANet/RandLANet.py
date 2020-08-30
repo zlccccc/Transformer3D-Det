@@ -147,8 +147,8 @@ class IoUCalculator:
         self.cfg = cfg
 
     def add_data(self, end_points):
-        logits = end_points['valid_logits']
-        labels = end_points['valid_labels']
+        logits = end_points['logits']
+        labels = end_points['labels']
         pred = logits.max(dim=1)[1]
         pred_valid = pred.detach().cpu().numpy()
         labels_valid = labels.detach().cpu().numpy()

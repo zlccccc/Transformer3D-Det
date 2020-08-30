@@ -15,6 +15,7 @@ class RandLANetv1(base_module):
         super(RandLANetv1, self).__init__()
         self.backbone = RandLANet(config)
         dataset_name = config.get('dataset', 'SemanticKITTI')  # ONLY GET NAME
+        self.calculator, self.iou_n_count = None, 1
         if dataset_name == 'Semantic3D':
             self.config = ConfigSemantic3D
         else:
@@ -38,8 +39,18 @@ class RandLANetv1(base_module):
         output['acc(error)'] = output['acc']
         output['acc(error_count)'] = 1
         output['error'] = 1 - output['acc(error)']
+        if self.calculator is not None:  # already last
+            self.calculator.add_data(output)
+            mean_iou, iou_list = self.calculator.compute_iou()
+            output['mean_iou(error)'] = mean_iou
+            output['mean_iou(error_count)'] = self.iou_n_count
+            output['iou_list(error)'] = iou_list
+            output['iou_list(error_count)'] = self.iou_n_count
+            self.iou_n_count = 0
         output['n_count'] = 1
         return output
 
-    def calculate_dataset_initialize(self):  # TODO; IoUCalculator; must for dataset
+    def initialize_error(self):  # TODO; IoUCalculator; must for dataset
+        print('---- Initialize error calculating ----')
         self.calculator = IoUCalculator(self.config)
+        self.iou_n_count = 1
