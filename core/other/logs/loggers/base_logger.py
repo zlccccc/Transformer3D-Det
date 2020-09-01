@@ -29,6 +29,7 @@ class logger():
             if div_name in info.keys():
                 divide = info[div_name]
         if divide is not None:
+            # print(value,divide)
             value = value / divide  # mean of this iteration
         else:
             raise NotImplementedError('Error fac name not in keyword; error_key = %s' % key)
@@ -72,11 +73,14 @@ class logger():
                     continue
                 if info_type == 'error' and keyword == 'error':  # mean of this type
                     value = self.__error_div_count(info, key, value)
-                strval, _ = self.__to_string(value, all=False, ForeColor=Fore.LIGHTBLUE_EX)
+                dir_output_all = False if '(mean)' not in key else True
+                strval, _ = self.__to_string(value, all=dir_output_all, ForeColor=Fore.LIGHTBLUE_EX)
                 nowstr = '%s:%s' % (key, strval)
+                if dir_output_all:
+                    self.final_value[key] = _
                 # floatvalue not useful
                 # print(key, keyword, keyword in key, div_name)
-                if output_saved:
+                if output_saved and not dir_output_all:
                     if info_type == 'error' and keyword == 'error':
                         value = self.info[info_type][key]
                         value = self.__error_div_count(self.info[info_type], key, value)

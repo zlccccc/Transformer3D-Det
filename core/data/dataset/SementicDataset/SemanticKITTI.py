@@ -9,8 +9,8 @@ import torch
 
 
 # TODO CHANGE it
-class SemanticKITTI(torch_data.Dataset):
-    def __init__(self, mode, test_id=None, data_path='/data/WQ/DataSet/semantic-kitti/dataset/sequences_0.06'):
+class SemanticKITTIDataset(torch_data.Dataset):
+    def __init__(self, mode, test_id=None, data_path='/data/DataSet/semantic-kitti/dataset/sequences_0.06'):
         self.name = 'SemanticKITTI'
         self.dataset_path = data_path
         self.label_to_names = {0: 'unlabeled',

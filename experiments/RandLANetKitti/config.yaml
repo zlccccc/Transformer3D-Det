@@ -1,8 +1,8 @@
 common:
     model:
         name: RandLANetv1
-        dataset: Semantic3D
-        feature_channel: 6
+        dataset: SemanticKITTI
+        feature_channel: 3
     logs:
         base_logger:
             path: log/log.txt
@@ -22,12 +22,13 @@ train:
     # max_epoch = 100  # maximum epoch during training (100*500)
     # learning_rate = 1e-2  # initial learning rate
     # lr_decays = {i: 0.95 for i in range(0, 500)}  # decay rate of learning rate
-    batch_size: 4
-    workers: 0
+    batch_size: 6
+    workers: 6
     dataset:
-        name: Semantic3DDataset
+        name: SemanticKITTIDataset
+        test_id: 11
         mode: training
-        data_path: /data/dataset/semantic3d
+        data_path: /data/dataset/semantickitti/dataset/sequences_0.06
     optimizer:
         name: Adam
         betas: [0.9, 0.999]
@@ -35,22 +36,23 @@ train:
         weight_decay: 0.0001
     lr_scheduler:
         type: lr_scheduler_step
-        step_size: 500
+        step_size: 3000
         gamma: 0.95
         base_lr: 0.01
     runner:
         name: iteration
         max_iter: 100000
         # test and save
-        test_freq: 1000
-        save_freq: 100000
+        test_freq: 2000
+        save_freq: 300000
         log_freq: 10
         snapshot_save_path: snapshot
 test:
-    batch_size: 4
-    workers: 0
+    batch_size: 6
+    workers: 4
     dataset:
         validationset:
-            name: Semantic3DDataset
+            name: SemanticKITTIDataset
+            test_id: 11
             mode: validation
-            data_path: /data/dataset/semantic3d
+            data_path: /data/dataset/semantickitti/dataset/sequences_0.06

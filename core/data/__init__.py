@@ -4,6 +4,7 @@ from .dataset.Classification3D.ModelNetFeatureDataset import ModelNetFeatureData
 from .dataset.Language3D._3DSSGDataset import PCSGDataset
 from .dataset.Segmentation3D.ShapeNetDataset import ShapeNetDataset
 from .dataset.SementicDataset.Semantic3D import Semantic3DDataset
+from .dataset.SementicDataset.SemanticKITTI import SemanticKITTIDataset
 
 
 def get_one_dataset(config: dict):
@@ -22,6 +23,8 @@ def get_one_dataset(config: dict):
         return ShapeNetDataset(**config)
     elif name == 'Semantic3DDataset':
         return Semantic3DDataset(**config)
+    elif name == 'SemanticKITTIDataset':
+        return SemanticKITTIDataset(**config)
     else:
         raise NotImplementedError(name)
 

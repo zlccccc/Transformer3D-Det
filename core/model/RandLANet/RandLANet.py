@@ -15,6 +15,8 @@ class RandLANet(nn.Module):
         feature_channel = config.get('feature_channel', 3)
         if dataset_name == 'Semantic3D':
             self.config = ConfigSemantic3D
+        elif dataset_name == 'SemanticKITTI':
+            self.config = ConfigSemanticKITTI
         else:
             raise NotImplementedError(dataset_name)
         self.class_weights = DP.get_class_weights(dataset_name)
@@ -65,6 +67,7 @@ class RandLANet(nn.Module):
             if i == 0:
                 f_encoder_list.append(f_encoder_i)
             f_encoder_list.append(f_sampled_i)
+            # torch.cuda.empty_cache()
         # ###########################Encoder############################
 
         features = self.decoder_0(f_encoder_list[-1])
@@ -78,6 +81,7 @@ class RandLANet(nn.Module):
             features = f_decoder_i
             # print('upsample decoder feature shape', features.shape)
             f_decoder_list.append(f_decoder_i)
+            # torch.cuda.empty_cache()
         # ###########################Decoder############################
 
         features = self.fc1(features)
@@ -147,8 +151,8 @@ class IoUCalculator:
         self.cfg = cfg
 
     def add_data(self, end_points):
-        logits = end_points['logits']
-        labels = end_points['labels']
+        logits = end_points['valid_logits']
+        labels = end_points['valid_labels']
         pred = logits.max(dim=1)[1]
         pred_valid = pred.detach().cpu().numpy()
         labels_valid = labels.detach().cpu().numpy()
@@ -160,6 +164,8 @@ class IoUCalculator:
         val_total_correct += correct
         val_total_seen += len(labels_valid)
 
+        # print(labels_valid.shape, pred_valid.shape)
+        # print(np.arange(0, self.cfg.num_classes, 1))
         conf_matrix = confusion_matrix(labels_valid, pred_valid, np.arange(0, self.cfg.num_classes, 1))
         self.gt_classes += np.sum(conf_matrix, axis=1)
         self.positive_classes += np.sum(conf_matrix, axis=0)
@@ -254,9 +260,7 @@ class Att_pooling(nn.Module):
         f_agg = self.mlp(f_agg)
         return f_agg
 
-
-def compute_loss(end_points, cfg):
-
+def reduce_points(end_points, cfg):
     logits = end_points['logits']
     labels = end_points['labels']
 
@@ -279,8 +283,13 @@ def compute_loss(end_points, cfg):
     for ign_label in cfg.ignored_label_inds:
         reducing_list = torch.cat([reducing_list[:ign_label], inserted_value, reducing_list[ign_label:]], 0)
     valid_labels = torch.gather(reducing_list, 0, valid_labels_init)
-    loss = get_loss(valid_logits, valid_labels, cfg.class_weights)
     end_points['valid_logits'], end_points['valid_labels'] = valid_logits, valid_labels
+    return end_points
+
+
+def compute_loss(end_points, cfg):
+    valid_logits, valid_labels = end_points['valid_logits'], end_points['valid_labels'] 
+    loss = get_loss(valid_logits, valid_labels, cfg.class_weights)
     end_points['loss'] = loss
     return loss, end_points
 

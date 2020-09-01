@@ -10,7 +10,8 @@ def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # la
         model.initialize_error()
     for it, sample in enumerate(loader):
         sample = transform_input(sample)
-        output = model(sample)
+        with torch.no_grad():  # no tracking
+            output = model(sample)
         # mutli-batch; for data-parallel-model use
         if isinstance(model, torch.nn.DataParallel):
             for key, value in output.items():
