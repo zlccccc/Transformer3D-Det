@@ -41,7 +41,7 @@ train:
         base_lr: 0.01
     runner:
         name: iteration
-        max_iter: 100000
+        max_iter: 300000
         # test and save
         test_freq: 2000
         save_freq: 300000
