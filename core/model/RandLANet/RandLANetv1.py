@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from .utils import pytorch_utils as pt_utils
 from .utils.helper_tool import ConfigSemanticKITTI, ConfigS3DIS, ConfigSemantic3D
 from .utils.helper_tool import DataProcessing as DP
+from .utils.OutputUtils import Semantic3DModelTester
 import numpy as np
 from sklearn.metrics import confusion_matrix
 from .RandLANet import RandLANet, reduce_points, compute_loss, IoUCalculator, compute_acc
@@ -16,8 +17,9 @@ class RandLANetv1(base_module):
         super(RandLANetv1, self).__init__()
         self.backbone = RandLANet(config)
         dataset_name = config.get('dataset', 'SemanticKITTI')  # ONLY GET NAME
+        self.dataset_name = dataset_name
         self.calculator, self.iou_n_count = None, 1
-        self.thop_cal = False # True
+        self.thop_cal = False  # True
         # self.thop_cal = True
         if dataset_name == 'Semantic3D':
             self.config = ConfigSemantic3D
@@ -65,3 +67,10 @@ class RandLANetv1(base_module):
         print('---- Initialize error calculating ----')
         self.calculator = IoUCalculator(self.config)
         self.iou_n_count = 1
+
+    def save_dataset(self, dataset):
+        if self.dataset_name == 'Semantic3D':
+            tester = Semantic3DModelTester(self, dataset)
+        else:
+            raise NotImplementedError(self.dataset_name)
+        tester.test()

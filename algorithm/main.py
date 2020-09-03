@@ -20,6 +20,7 @@ import torch.utils.data as data
 parser = argparse.ArgumentParser(description='PyTorch training script')
 parser.add_argument('--config', default='None', type=str, help='config yaml path')
 parser.add_argument('--test', action='store_true', default=False, help='(option) use testset to test model')
+parser.add_argument('--save', action='store_true', default=False, help='(option) generate testset result')
 parser.add_argument('--recover', action='store_true', default=False, help='(option) change config and recover')
 parser.add_argument('--opt', default='None', type=str, help='other option')
 parser.add_argument('--gpu', default='0', type=str, help='gpu device')
@@ -40,8 +41,17 @@ def main():
         config.common.load.load = True
     elif args.recover:
         print('=============    use args --recover    ==============')
+        assert not args.test  # must
         config.common.load.load = True
         config.common.load.type = 'recover'
+    elif args.save:
+        print('==============     use args --save     ==============')
+        assert not args.test  # must
+        assert not args.recover  # must
+        config.common.load.load = True
+        config.common.load.type = 'recover'
+        config.train.runner.name = 'save'
+
     loggers = Loggers(config.common.logs)
     loggers.update_loss({'args_out': args, 'config_out': config}, True)
 

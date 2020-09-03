@@ -1,6 +1,7 @@
 from .iterRunner import iterRunner
 from .testRunner import testRunner
 from .bowRunner import bowRunner
+from .saveRunner import saveRunner
 
 
 def getrunner(config):
@@ -12,5 +13,7 @@ def getrunner(config):
         return bowRunner
     elif name == 'test':
         return testRunner
+    elif name == 'save':
+        return saveRunner
     else:
         raise NotImplementedError(name)

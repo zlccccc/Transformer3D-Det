@@ -192,7 +192,7 @@ class Semantic3DDataset(torch_data.Dataset):
         self.class_weight[split] = []
 
         # Random initialize (for every point)
-        for i, tree in enumerate(self.input_trees[split]): # !!! not right
+        for i, tree in enumerate(self.input_trees[split]):  # !!! not right
             self.possibility[split] += [np.random.rand(tree.data.shape[0]) * 1e-3]
             self.min_possibility[split] += [float(np.min(self.possibility[split][-1]))]
 

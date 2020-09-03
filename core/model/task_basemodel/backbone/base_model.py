@@ -27,13 +27,19 @@ class base_module(nn.Module):
         pass
 
     def train_mode(self):
-        if torch.cuda.is_available: # not useful?
+        if torch.cuda.is_available:  # empty_cache not useful?
             torch.cuda.empty_cache()
         self.mode = 'train'
         self.train()
 
     def val_mode(self):
-        if torch.cuda.is_available: # not useful?
+        if torch.cuda.is_available:
+            torch.cuda.empty_cache()
+        self.mode = 'val'
+        self.eval()
+
+    def test_mode(self):
+        if torch.cuda.is_available:
             torch.cuda.empty_cache()
         self.mode = 'test'
         self.eval()
@@ -54,10 +60,10 @@ class base_module(nn.Module):
         input = self._after_forward(input)
         if self.mode == 'train':
             return self.calculate_loss(input, output)
-        elif self.mode == 'test':
-            return self.calculate_error(input, output)
         elif self.mode == 'val':
-            return output
+            return self.calculate_error(input, output)
+        elif self.mode == 'test':
+            return output  # have no label; we should save it
         else:
             raise NotImplementedError(self.mode)
 

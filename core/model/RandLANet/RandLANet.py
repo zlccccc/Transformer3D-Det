@@ -260,6 +260,7 @@ class Att_pooling(nn.Module):
         f_agg = self.mlp(f_agg)
         return f_agg
 
+
 def reduce_points(end_points, cfg):
     logits = end_points['logits']
     labels = end_points['labels']
@@ -288,7 +289,7 @@ def reduce_points(end_points, cfg):
 
 
 def compute_loss(end_points, cfg):
-    valid_logits, valid_labels = end_points['valid_logits'], end_points['valid_labels'] 
+    valid_logits, valid_labels = end_points['valid_logits'], end_points['valid_labels']
     loss = get_loss(valid_logits, valid_labels, cfg.class_weights)
     end_points['loss'] = loss
     return loss, end_points

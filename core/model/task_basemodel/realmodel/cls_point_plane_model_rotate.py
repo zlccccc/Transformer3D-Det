@@ -43,7 +43,7 @@ class cls_plane_module_rotate(cls_module):
         # print('before forward: apply transform')
         if self.mode == 'train':
             out = apply_transform(self.traintransform, input['point_set'])  # transform
-        elif self.mode == 'test':
+        elif self.mode == 'val':
             out = apply_transform(self.testtransfrom, input['point_set'])  # transform
         else:
             raise NotImplementedError('before forward: not supported type', self.mode)

@@ -88,6 +88,7 @@ class PointnetPlusPartSegHRv2(seg_module):
             output = ShapeNetError(input, output)
         return output
 
+
 if __name__ == "__main__":
     import sys
     import os
