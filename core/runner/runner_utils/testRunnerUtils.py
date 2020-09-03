@@ -4,6 +4,9 @@ from .utils import transform_input
 
 
 def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # last_iter: for logging use
+    if 'save' in testset_name:
+        print('skip dataset', testset_name)
+        return 0., 0
     # must be val_mode
     all_error, n_count = 0., 0
     if hasattr(model, 'initialize_error'):

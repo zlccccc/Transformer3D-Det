@@ -54,3 +54,7 @@ test:
             name: Semantic3DDataset
             mode: validation
             data_path: /data/dataset/semantic3d
+        saveset:
+            name: Semantic3DDataset
+            mode: test
+            data_path: /data/dataset/semantic3d

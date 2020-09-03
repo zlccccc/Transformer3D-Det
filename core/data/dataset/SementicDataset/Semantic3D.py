@@ -312,6 +312,7 @@ class Semantic3DDataset(torch_data.Dataset):
         return stacked_features
 
     def __len__(self):
+        # return 1
         return self.num_per_epoch  # iter per epoch
 
     def __getitem__(self, index):

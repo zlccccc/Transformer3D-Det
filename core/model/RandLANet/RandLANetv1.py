@@ -68,9 +68,9 @@ class RandLANetv1(base_module):
         self.calculator = IoUCalculator(self.config)
         self.iou_n_count = 1
 
-    def save_dataset(self, dataset):
+    def save_dataset(self, dataloader, logger):
         if self.dataset_name == 'Semantic3D':
-            tester = Semantic3DModelTester(self, dataset)
+            tester = Semantic3DModelTester(self, dataloader, logger)
         else:
             raise NotImplementedError(self.dataset_name)
-        tester.test()
+        tester.test(self, dataloader)

@@ -50,6 +50,7 @@ def main():
         assert not args.recover  # must
         config.common.load.load = True
         config.common.load.type = 'recover'
+        config.common.logs.base_logger.path += '.save'
         config.train.runner.name = 'save'
 
     loggers = Loggers(config.common.logs)
