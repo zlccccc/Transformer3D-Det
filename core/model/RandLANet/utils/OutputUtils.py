@@ -100,7 +100,7 @@ class Semantic3DModelTester:
                     # Save ascii preds
                     ascii_name = os.path.join(test_path, 'predictions', dataloader.dataset.ascii_files[cloud_name])
                     np.savetxt(ascii_name, preds, fmt='%d')
-                    self.log_out.update_loss({'info_out': ascii_name + 'has saved'}, False)
+                    self.log_out.update_loss({'info_out': ascii_name + ' has saved'}, False)
                     i_test += 1
 
                 t2 = time.time()

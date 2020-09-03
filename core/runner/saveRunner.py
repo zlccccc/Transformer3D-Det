@@ -22,7 +22,7 @@ def saveRunner(info):
         if 'save' not in testset_name:
             continue
         model.save_dataset(loader, loggers)
-        print('Testing Dataset: use %.5fs' % time.time() - t_start)
+        print('Testing Dataset: use %.5fs' % (time.time() - t_start))
         t_start = time.time()
     # for logger
     print('testing: done')

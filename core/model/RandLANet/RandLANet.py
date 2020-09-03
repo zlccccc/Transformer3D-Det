@@ -99,11 +99,11 @@ class RandLANet(nn.Module):
         return output
 
     @staticmethod
-    def random_sample(feature, pool_idx):
+    def random_sample(feature, pool_idx): # RIGHT; GROUP DIRECTLY
         """
-        :param feature: [B, N, d] input features matrix
+        :param feature: [B, d, N, 1] input features matrix
         :param pool_idx: [B, N', max_num] N' < N, N' is the selected position after pooling
-        :return: pool_features = [B, N', d] pooled features matrix
+        :return: pool_features = [B, d, N', 1] pooled features matrix
         """
         feature = feature.squeeze(dim=3)  # batch*channel*npoints
         num_neigh = pool_idx.shape[-1]
@@ -112,15 +112,16 @@ class RandLANet(nn.Module):
         pool_idx = pool_idx.reshape(batch_size, -1)  # batch*(npoints,nsamples)
         pool_features = torch.gather(feature, 2, pool_idx.unsqueeze(1).repeat(1, feature.shape[1], 1))
         pool_features = pool_features.reshape(batch_size, d, -1, num_neigh)
+        # print(feature.shape, pool_idx.shape, pool_features.shape)
         pool_features = pool_features.max(dim=3, keepdim=True)[0]  # batch*channel*npoints*1
         return pool_features
 
     @staticmethod
-    def nearest_interpolation(feature, interp_idx):
+    def nearest_interpolation(feature, interp_idx):  # nearest! it is not so good
         """
-        :param feature: [B, N, d] input features matrix
+        :param feature: [B, d, N, 1] input features matrix
         :param interp_idx: [B, up_num_points, 1] nearest neighbour index
-        :return: [B, up_num_points, d] interpolated features matrix
+        :return: [B, d, up_num_points, 1] interpolated features matrix
         """
         feature = feature.squeeze(dim=3)  # batch*channel*npoints
         batch_size = interp_idx.shape[0]
@@ -128,6 +129,7 @@ class RandLANet(nn.Module):
         interp_idx = interp_idx.reshape(batch_size, up_num_points)
         interpolated_features = torch.gather(feature, 2, interp_idx.unsqueeze(1).repeat(1, feature.shape[1], 1))
         interpolated_features = interpolated_features.unsqueeze(3)  # batch*channel*npoints*1
+        # print(feature.shape, interp_idx.shape, interpolated_features.shape, flush=True)
         return interpolated_features
 
 
@@ -252,7 +254,7 @@ class Att_pooling(nn.Module):
         self.mlp = pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True)
 
     def forward(self, feature_set):
-
+        # print(feature_set.shape, flush=True)
         att_activation = self.fc(feature_set)
         att_scores = F.softmax(att_activation, dim=3)
         f_agg = feature_set * att_scores
