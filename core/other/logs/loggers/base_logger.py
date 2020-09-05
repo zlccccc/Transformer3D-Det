@@ -44,7 +44,7 @@ class logger():
             floatvalue = float(np.mean(value))
             return str_val + 'arrmean{%s%.3f%s}' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
         elif isinstance(value, torch.Tensor):
-            value = value.to('cpu')
+            value = value.to('cpu').view(-1)
             # print(value, value.view(-1).shape, 'tensor value')
             if value.view(-1).shape[0] == 1:
                 floatvalue = float(value)

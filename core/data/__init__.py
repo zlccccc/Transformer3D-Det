@@ -1,32 +1,44 @@
-from .dataset.Test3DDataset import Test3DDataset
-from .dataset.Classification3D.ModelNetDataset import ModelNetDataset
-from .dataset.Classification3D.ModelNetFeatureDataset import ModelNetFeatureDataset
-from .dataset.Language3D._3DSSGDataset import PCSGDataset
-from .dataset.Segmentation3D.ShapeNetDataset import ShapeNetDataset
-from .dataset.SementicDataset.Semantic3D import Semantic3DDataset
-from .dataset.SementicDataset.SemanticKITTI import SemanticKITTIDataset
+# from .dataset.Test3DDataset import Test3DDataset
+# from .dataset.Classification3D.ModelNetDataset import ModelNetDataset
+# from .dataset.Classification3D.ModelNetFeatureDataset import ModelNetFeatureDataset
+# from .dataset.Language3D._3DSSGDataset import PCSGDataset
+# from .dataset.Segmentation3D.ShapeNetDataset import ShapeNetDataset
+# from .dataset.SementicDataset.Semantic3D import Semantic3DDataset
+# from .dataset.SementicDataset.SemanticKITTI import SemanticKITTIDataset
+import importlib
+
+dataset_dict = {
+    'Test3DDataset': 'Test3DDataset.Test3DDataset',
+    'ModelNetDataset': 'Classification3D.ModelNetDataset.ModelNetDataset',
+    'ModelNetFeatureDataset': 'Classification3D.ModelNetFeatureDataset.ModelNetFeatureDataset',
+    '3DSSGDataset': 'Language3D._3DSSGDataset.PCSGDataset',
+    'ShapeNetDataset': 'Segmentation3D.ShapeNetDataset.ShapeNetDataset',
+    'Semantic3DDataset': 'SementicDataset.Semantic3D.Semantic3DDataset',
+    'SemanticKITTIDataset': 'SementicDataset.SemanticKITTI.SemanticKITTIDataset',
+}
 
 
 def get_one_dataset(config: dict):
     name = config.name
     del config['name']
-    print(config)
-    if name == 'Test3DDataset':
-        return Test3DDataset(**config)
-    elif name == 'ModelNetDataset':
-        return ModelNetDataset(**config)
-    elif name == 'ModelNetFeatureDataset':
-        return ModelNetFeatureDataset(**config)
-    elif name == '3DSSGDataset':
-        return PCSGDataset(**config)
-    elif name == 'ShapeNetDataset':
-        return ShapeNetDataset(**config)
-    elif name == 'Semantic3DDataset':
-        return Semantic3DDataset(**config)
-    elif name == 'SemanticKITTIDataset':
-        return SemanticKITTIDataset(**config)
-    else:
+    print('support dataset', dataset_dict.keys())
+    print('trying to find dataset', config)
+    if name not in dataset_dict.keys():
         raise NotImplementedError(name)
+    try:
+        pathlist = 'core.data.dataset.' + dataset_dict[name]  # must abspath
+        pathlist = pathlist.split('.')
+        relativepath, packagepath = pathlist[-1], '.'.join(pathlist[:-1])
+        print('Try to import_module', relativepath, 'from path', packagepath)
+        package = importlib.import_module(packagepath)
+        assert hasattr(package, relativepath), 'should have class in python file'
+        datasetclass = getattr(package, relativepath)
+        print('Load model path success!')
+    except Exception as e:
+        print('dataset path', pathlist, 'not exist')
+        print(str(e))
+        datasetclass = None
+    return datasetclass(**config)
 
 
 def get_dataset(config: dict):

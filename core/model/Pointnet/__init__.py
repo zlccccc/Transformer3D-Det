@@ -1,33 +1,43 @@
 import torch.nn as nn
+import importlib
+import os
 
-from .Pointnet import PointnetInit
-from .PointnetPlus import PointnetPlus
-from .PointnetPlusSSG import PointnetPlusSSG
-from .PointnetPlusPartSeg import PointnetPlusPartSeg
-from .PointnetPlusPartSegv2 import PointnetPlusPartSegv2
-from .PointHRNetPartSeg import PointnetPlusPartSegHR
-from .PointHRNetPartSegv2 import PointnetPlusPartSegHRv2
-
+# must under core.model package
 module_dict = {
-    'pointnet': PointnetInit,
-    'pointnet++': PointnetPlus,
-    'pointnet++2': PointnetPlusSSG,
-    'pointnet_partseg': PointnetPlusPartSeg,
-    'pointnet_partsegv2': PointnetPlusPartSegv2,
-    'pointnet_partsegHR': PointnetPlusPartSegHR,
-    'pointnet_partsegHRv2': PointnetPlusPartSegHRv2,
+    'pointnet': 'Pointnet.PointnetInit',
+    'pointnet++': 'PointnetPlus.PointnetPlus',
+    'pointnet++2': 'PointnetPlusSSG.PointnetPlusSSG',
+    'pointnet_partseg': 'PointnetPlusPartSeg.PointnetPlusPartSeg',
+    'pointnet_partsegv2': 'PointnetPlusPartSegv2.PointnetPlusPartSegv2',
+    'pointnet_partsegHR': 'PointHRNetPartSeg.PointnetPlusPartSegHR',
+    'pointnet_partsegHRv2': 'PointHRNetPartSegv2.PointnetPlusPartSegHRv2',
 }
 
 
 def model_entry(config):
+    package_name = __file__
+    print('package name', package_name)
+    package_name = package_name.split('\\')[-2]
     name = config.name
-    # print('model', module_dict.keys())
+    print('try loading from model package %s: ' % package_name, module_dict.keys())
     if name not in module_dict.keys():
         return None
     del config['name']
     if config.get('use_syncbn', False):
         print('using SyncBatchNorm')
         raise NotImplementedError('SyncBatchNorm')
-    print('get config from Pointnet MyImpilement')
+    print('get config from %s MyImpilement' % package_name)
     print('module config:', config.keys())
-    return module_dict[name](config)
+    try:
+        pathlist = 'core.model.' + package_name + '.' + module_dict[name]  # must abspath
+        pathlist = pathlist.split('.')
+        relativepath, packagepath = pathlist[-1], '.'.join(pathlist[:-1])
+        print('try to import_module', relativepath, packagepath)
+        package = importlib.import_module(packagepath)
+        assert hasattr(package, relativepath), 'should have class in python file'
+        modelclass = getattr(package, relativepath)
+    except Exception as e:
+        print('dataset path', pathlist, 'not exist')
+        print(str(e))
+        modelclass = None
+    return modelclass(config)
