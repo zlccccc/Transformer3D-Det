@@ -1,6 +1,7 @@
 import torch.nn as nn
 import importlib
 import os
+import re
 
 module_dict = {
     'BowModel': 'BowModel.BowModel',
@@ -10,7 +11,7 @@ module_dict = {
 def model_entry(config):
     package_name = __file__
     print('package name', package_name)
-    package_name = package_name.split('\\')[-2]
+    package_name = re.split('\\/', package_name)[-2]
     name = config.name
     print('try loading from model package %s: ' % package_name, module_dict.keys())
     if name not in module_dict.keys():
