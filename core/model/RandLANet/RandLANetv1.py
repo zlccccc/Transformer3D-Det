@@ -20,7 +20,7 @@ class RandLANetv1(base_module):
         self.dataset_name = dataset_name
         self.calculator, self.iou_n_count = None, 1
         self.thop_cal = False  # True
-        self.thop_cal = True
+        # self.thop_cal = True
         if dataset_name == 'Semantic3D':
             self.config = ConfigSemantic3D
         elif dataset_name == 'SemanticKITTI':

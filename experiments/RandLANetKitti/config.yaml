@@ -31,9 +31,7 @@ train:
         data_path: /data/dataset/semantickitti/dataset/sequences_0.06
     optimizer:
         name: Adam
-        betas: [0.9, 0.999]
-        eps: 0.00000001
-        weight_decay: 0.0001
+        weight_decay: 0
     lr_scheduler:
         type: lr_scheduler_step
         step_size: 3000
@@ -56,3 +54,4 @@ test:
             test_id: 11
             mode: validation
             data_path: /data/dataset/semantickitti/dataset/sequences_0.06
+

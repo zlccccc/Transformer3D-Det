@@ -27,14 +27,14 @@ class base_module(nn.Module):
         pass
 
     def train_mode(self):
-        if torch.cuda.is_available:  # empty_cache not useful?
-            torch.cuda.empty_cache()
+        # if torch.cuda.is_available:  # empty_cache not useful?
+        #     torch.cuda.empty_cache()
         self.mode = 'train'
         self.train()
 
     def val_mode(self):
-        if torch.cuda.is_available:
-            torch.cuda.empty_cache()
+        # if torch.cuda.is_available:
+        #     torch.cuda.empty_cache()
         self.mode = 'val'
         self.eval()
 
