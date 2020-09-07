@@ -281,12 +281,13 @@ def reduce_points(end_points, cfg):
     valid_labels_init = labels[valid_idx]
 
     # Reduce label values in the range of logit shape
-    reducing_list = torch.range(0, cfg.num_classes).long().cuda()
+    reducing_list = torch.arange(0, cfg.num_classes+1).long().cuda()
     inserted_value = torch.zeros((1,)).long().cuda()
     for ign_label in cfg.ignored_label_inds:
         reducing_list = torch.cat([reducing_list[:ign_label], inserted_value, reducing_list[ign_label:]], 0)
     valid_labels = torch.gather(reducing_list, 0, valid_labels_init)
     end_points['valid_logits'], end_points['valid_labels'] = valid_logits, valid_labels
+    # print(valid_logits.shape, valid_labels.shape, reducing_list.shape, flush=True)
     return end_points
 
 

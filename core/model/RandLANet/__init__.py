@@ -5,6 +5,7 @@ import re
 
 module_dict = {
     'RandLANetv1': 'RandLANetv1.RandLANetv1',
+    'SPConvv1': 'SPConvv1.SPConvv1'
 }
 
 
@@ -32,6 +33,5 @@ def model_entry(config):
         modelclass = getattr(package, relativepath)
     except Exception as e:
         print('dataset path', pathlist, 'not exist')
-        print(str(e))
-        modelclass = None
+        raise e
     return modelclass(config)

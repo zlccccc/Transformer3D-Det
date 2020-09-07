@@ -1,6 +1,7 @@
 import torch.nn as nn
 import importlib
 import os
+import re
 
 module_dict = {
     'pointnetInitial': 'PointnetPlus.PointnetPlusInitial',

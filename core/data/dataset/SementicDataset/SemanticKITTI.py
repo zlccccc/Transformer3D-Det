@@ -68,6 +68,8 @@ class SemanticKITTIDataset(torch_data.Dataset):
         cfg.class_weights = DP.get_class_weights('SemanticKITTI')
 
     def __len__(self):
+        # if self.mode == 'validation':
+        #     return 10
         return len(self.data_list)
 
     def __getitem__(self, item):
@@ -82,6 +84,7 @@ class SemanticKITTIDataset(torch_data.Dataset):
             pc_path = self.data_list[cloud_ind]
             pc, tree, labels = self.get_data(pc_path)
             # crop a small point cloud
+            # print(np.min(pc, axis=0), np.max(pc, axis=0), '<< pc max and min', flush=True)
             pick_idx = np.random.choice(len(pc), 1)
             selected_pc, selected_labels, selected_idx = self.crop_pc(pc, labels, tree, pick_idx)
         else:
