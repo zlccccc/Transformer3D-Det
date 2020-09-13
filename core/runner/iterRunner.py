@@ -6,6 +6,17 @@ import time
 import traceback
 
 
+def print_grad(model, keyword=None):
+    print('Calculate grad')
+    for name, param in model.named_parameters():
+        # if 'weight' not in name:
+        #     continue
+        if keyword is not None and keyword not in name:
+            continue
+        print(name, 'max: grad[%.5f] value[%.5f]' %(float(torch.max(param.grad).cpu()), float(torch.max(param.data).cpu())), end=' ; ')
+        print('std: grad[%.5f] value[%.5f]' %(float(param.grad.detach().std().cpu()), float(param.data.detach().std().cpu())), 'shape', param.shape, flush=True)
+        # print('real value', param.grad.cpu()[:3, :], param.data.cpu()[:3, :], flush=True)
+
 def iterRunner(info):
     config = info['config']
     train_loader_iter = iter(info['traindataloader'])
@@ -54,6 +65,10 @@ def iterRunner(info):
         # print(loss)
         loss.backward()
         # model.average_gradients()  # multi card sync
+        # print_grad(model, 'weight')
+        # if iter_id % 1000 == 0:# or True:# and False:  # just print
+        # if True:# and False:  # just print
+        #     print_grad(model, '.0.weight')  # conv_first
         optimizer.step()
         # print('backward okay') # for test
         output['iteration'] = [iter_id, config.max_iter, (iter_id + 1) / len(info['traindataloader'])]

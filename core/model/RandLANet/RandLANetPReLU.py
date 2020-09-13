@@ -277,9 +277,7 @@ def reduce_points(end_points, cfg):
 
     # Collect logits and labels that are not ignored
     valid_idx = ignored_bool == 0
-    # print(ignored_bool.shape, valid_idx.shape, logits.shape, '<< idx shape (when calculating useful pos)')
     valid_logits = logits[valid_idx, :]
-    # print('valid.shape', valid_logits.shape, 'logits.val', logits.detach().cpu().mean(), logits.detach().cpu().std(), 'labels shape', labels.shape, flush=True)
     valid_labels_init = labels[valid_idx]
 
     # Reduce label values in the range of logit shape
@@ -288,7 +286,6 @@ def reduce_points(end_points, cfg):
     for ign_label in cfg.ignored_label_inds:
         reducing_list = torch.cat([reducing_list[:ign_label], inserted_value, reducing_list[ign_label:]], 0)
     valid_labels = torch.gather(reducing_list, 0, valid_labels_init)
-
     end_points['valid_logits'], end_points['valid_labels'] = valid_logits, valid_labels
     # print(valid_logits.shape, valid_labels.shape, reducing_list.shape, flush=True)
     return end_points
@@ -296,8 +293,6 @@ def reduce_points(end_points, cfg):
 
 def compute_loss(end_points, cfg):
     valid_logits, valid_labels = end_points['valid_logits'], end_points['valid_labels']
-    # print('compute shape', valid_logits.shape, valid_labels.shape)
-    # print('compute loss', valid_logits[:3], F.softmax(valid_logits, dim=-1)[:3], valid_labels[:3], 'valid labels for loss')
     loss = get_loss(valid_logits, valid_labels, cfg.class_weights)
     end_points['loss'] = loss
     return loss, end_points

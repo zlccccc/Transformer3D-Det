@@ -62,6 +62,7 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
         if 'core.model.' not in str(type(m)):
             print('initialize not impl', type(m))
         pass
+        # print('initialize not impl', type(m))
         # raise NotImplementedError(type(m))
 
 

@@ -10,10 +10,7 @@ import torch
 
 # TODO CHANGE it
 class SemanticKITTIDataset(torch_data.Dataset):
-    def __init__(self, mode, test_id=None, data_path='/data/DataSet/semantic-kitti/dataset/sequences_0.06', num_points=None):
-        if num_points is not None:
-           assert isinstance(num_points, int)
-           cfg.num_points = num_points
+    def __init__(self, mode, test_id=None, data_path='/data/DataSet/semantic-kitti/dataset/sequences_0.06'):
         self.name = 'SemanticKITTI'
         self.dataset_path = data_path
         self.label_to_names = {0: 'unlabeled',
@@ -71,8 +68,8 @@ class SemanticKITTIDataset(torch_data.Dataset):
         cfg.class_weights = DP.get_class_weights('SemanticKITTI')
 
     def __len__(self):
-        # if self.mode == 'validation':
-        #     return 10
+        if self.mode == 'validation':
+            return 10
         return len(self.data_list)
 
     def __getitem__(self, item):
@@ -113,7 +110,6 @@ class SemanticKITTIDataset(torch_data.Dataset):
         with open(kd_tree_path, 'rb') as f:
             search_tree = pickle.load(f)
         points = np.array(search_tree.data, copy=False)
-        # print('points shape', points.shape)
         # Load labels
         if int(seq_id) >= 11:
             labels = np.zeros(np.shape(points)[0], dtype=np.uint8)

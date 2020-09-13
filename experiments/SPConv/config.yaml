@@ -29,9 +29,12 @@ train:
         test_id: 11
         mode: training
         data_path: /data/dataset/semantickitti/dataset/sequences_0.06
+        # num_points: 4096 # 4096 * 2
+        # num_points: 8192 # 4096 * 2
+        num_points: 16384 # 4096 * 2
     optimizer:
         name: Adam
-        weight_decay: 0
+        weight_decay: 0.0001
     lr_scheduler:
         type: lr_scheduler_step
         step_size: 3000
@@ -54,4 +57,7 @@ test:
             test_id: 11
             mode: validation
             data_path: /data/dataset/semantickitti/dataset/sequences_0.06
+            # num_points: 4096 # 4096 * 2
+            # num_points: 8192 # 4096 * 2
+            num_points: 16384 # 4096 * 2
 

@@ -28,6 +28,9 @@ class SPConvv1(base_module):
             self.config = ConfigSemanticKITTI
         else:
             raise NotImplementedError(dataset_name)
+        print('init spconvv1 config', self.config)
+        self.init_relu='relu'
+        self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
 
     def _forward(self, input):
         if self.thop_cal:
