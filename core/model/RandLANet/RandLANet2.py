@@ -19,9 +19,10 @@ class RandLANet(nn.Module):
             self.config = ConfigSemanticKITTI
         else:
             raise NotImplementedError(dataset_name)
+        self.dataset_name = dataset_name
         self.class_weights = DP.get_class_weights(dataset_name)
 
-        self.fc0 = pt_utils.Conv1d(feature_channel, 8, kernel_size=1, bn=True)
+        self.fc0 = pt_utils.Conv1d(feature_channel, 8, kernel_size=1, bn=True, activation=nn.PReLU(8))
 
         self.dilated_res_blocks = nn.ModuleList()
         d_in = 8
@@ -31,7 +32,7 @@ class RandLANet(nn.Module):
             d_in = 2 * d_out
 
         d_out = d_in
-        self.decoder_0 = pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True)
+        self.decoder_0 = pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True, activation=nn.PReLU(d_out))
 
         self.decoder_blocks = nn.ModuleList()
         for j in range(self.config.num_layers):
@@ -41,17 +42,24 @@ class RandLANet(nn.Module):
             else:
                 d_in = 4 * self.config.d_out[0]
                 d_out = 2 * self.config.d_out[0]
-            self.decoder_blocks.append(pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True))
+            self.decoder_blocks.append(pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True, activation=nn.PReLU(d_out)))
             # print('decoder block', d_in, d_out)
 
-        self.fc1 = pt_utils.Conv2d(d_out, 64, kernel_size=(1, 1), bn=True)
-        self.fc2 = pt_utils.Conv2d(64, 32, kernel_size=(1, 1), bn=True)
+        self.fc1 = pt_utils.Conv2d(d_out, 64, kernel_size=(1, 1), bn=True, activation=nn.PReLU(64))
+        self.fc2 = pt_utils.Conv2d(64, 32, kernel_size=(1, 1), bn=True, activation=nn.PReLU(32))
         self.dropout = nn.Dropout(0.5)
         self.fc3 = pt_utils.Conv2d(32, self.config.num_classes, kernel_size=(1, 1), bn=False, activation=None)
 
     def forward(self, inputs):
 
         features = inputs['features']  # Batch*channel*npoints
+        # print(features.std(), 'features std', flush=True)
+        if self.dataset_name == 'SemanticKITTI':
+            features = features / 6 # normalize
+        elif self.dataset_name == 'SemanticKITTI':
+            pass
+        else:
+            raise NotImplementedError(self.dataset_name)
         features = self.fc0(features)
 
         features = features.unsqueeze(dim=3)  # Batch*channel*npoints*1
@@ -145,50 +153,10 @@ def compute_acc(end_points):
     return acc, end_points
 
 
-class IoUCalculator:
-    def __init__(self, cfg):
-        self.gt_classes = [0 for _ in range(cfg.num_classes)]
-        self.positive_classes = [0 for _ in range(cfg.num_classes)]
-        self.true_positive_classes = [0 for _ in range(cfg.num_classes)]
-        self.cfg = cfg
-
-    def add_data(self, end_points):
-        logits = end_points['valid_logits']
-        labels = end_points['valid_labels']
-        pred = logits.max(dim=1)[1]
-        pred_valid = pred.detach().cpu().numpy()
-        labels_valid = labels.detach().cpu().numpy()
-
-        val_total_correct = 0
-        val_total_seen = 0
-
-        correct = np.sum(pred_valid == labels_valid)
-        val_total_correct += correct
-        val_total_seen += len(labels_valid)
-
-        # print(labels_valid.shape, pred_valid.shape)
-        # print(np.arange(0, self.cfg.num_classes, 1))
-        conf_matrix = confusion_matrix(labels_valid, pred_valid, np.arange(0, self.cfg.num_classes, 1))
-        self.gt_classes += np.sum(conf_matrix, axis=1)
-        self.positive_classes += np.sum(conf_matrix, axis=0)
-        self.true_positive_classes += np.diagonal(conf_matrix)
-
-    def compute_iou(self):
-        iou_list = []
-        for n in range(0, self.cfg.num_classes, 1):
-            if float(self.gt_classes[n] + self.positive_classes[n] - self.true_positive_classes[n]) != 0:
-                iou = self.true_positive_classes[n] / float(self.gt_classes[n] + self.positive_classes[n] - self.true_positive_classes[n])
-                iou_list.append(iou)
-            else:
-                iou_list.append(0.0)
-        mean_iou = sum(iou_list) / float(self.cfg.num_classes)
-        return mean_iou, iou_list
-
-
 class Dilated_res_block(nn.Module):
     def __init__(self, d_in, d_out):
         super().__init__()
-        self.mlp1 = pt_utils.Conv2d(d_in, d_out // 2, kernel_size=(1, 1), bn=True)
+        self.mlp1 = pt_utils.Conv2d(d_in, d_out // 2, kernel_size=(1, 1), bn=True, activation=nn.PReLU(d_out // 2))
         self.lfa = Building_block(d_out)
         self.mlp2 = pt_utils.Conv2d(d_out, d_out * 2, kernel_size=(1, 1), bn=True, activation=None)
         self.shortcut = pt_utils.Conv2d(d_in, d_out * 2, kernel_size=(1, 1), bn=True, activation=None)
@@ -204,10 +172,10 @@ class Dilated_res_block(nn.Module):
 class Building_block(nn.Module):
     def __init__(self, d_out):  # d_in = d_out//2
         super().__init__()
-        self.mlp1 = pt_utils.Conv2d(10, d_out // 2, kernel_size=(1, 1), bn=True)
+        self.mlp1 = pt_utils.Conv2d(10, d_out // 2, kernel_size=(1, 1), bn=True, activation=nn.PReLU(d_out // 2))
         self.att_pooling_1 = Att_pooling(d_out, d_out // 2)
 
-        self.mlp2 = pt_utils.Conv2d(d_out // 2, d_out // 2, kernel_size=(1, 1), bn=True)
+        self.mlp2 = pt_utils.Conv2d(d_out // 2, d_out // 2, kernel_size=(1, 1), bn=True, activation=nn.PReLU(d_out // 2))
         self.att_pooling_2 = Att_pooling(d_out, d_out)
 
     def forward(self, xyz, feature, neigh_idx):  # feature: Batch*channel*npoints*1
@@ -251,7 +219,7 @@ class Att_pooling(nn.Module):
     def __init__(self, d_in, d_out):
         super().__init__()
         self.fc = nn.Conv2d(d_in, d_in, (1, 1), bias=False)
-        self.mlp = pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True)
+        self.mlp = pt_utils.Conv2d(d_in, d_out, kernel_size=(1, 1), bn=True, activation=nn.PReLU(d_out))
 
     def forward(self, feature_set):
         # print(feature_set.shape, flush=True)
@@ -262,52 +230,3 @@ class Att_pooling(nn.Module):
         f_agg = self.mlp(f_agg)
         return f_agg
 
-
-def reduce_points(end_points, cfg):
-    logits = end_points['logits']
-    labels = end_points['labels']
-
-    logits = logits.transpose(1, 2).reshape(-1, cfg.num_classes)
-    labels = labels.reshape(-1)
-
-    # Boolean mask of points that should be ignored
-    ignored_bool = labels == 0
-    for ign_label in cfg.ignored_label_inds:
-        ignored_bool = ignored_bool | (labels == ign_label)
-
-    # Collect logits and labels that are not ignored
-    valid_idx = ignored_bool == 0
-    valid_logits = logits[valid_idx, :]
-    valid_labels_init = labels[valid_idx]
-
-    # Reduce label values in the range of logit shape
-    reducing_list = torch.arange(0, cfg.num_classes+1).long().cuda()
-    inserted_value = torch.zeros((1,)).long().cuda()
-    for ign_label in cfg.ignored_label_inds:
-        reducing_list = torch.cat([reducing_list[:ign_label], inserted_value, reducing_list[ign_label:]], 0)
-    valid_labels = torch.gather(reducing_list, 0, valid_labels_init)
-    end_points['valid_logits'], end_points['valid_labels'] = valid_logits, valid_labels
-    # print(valid_logits.shape, valid_labels.shape, reducing_list.shape, flush=True)
-    return end_points
-
-
-def compute_loss(end_points, cfg):
-    valid_logits, valid_labels = end_points['valid_logits'], end_points['valid_labels']
-    loss = get_loss(valid_logits, valid_labels, cfg.class_weights)
-    end_points['loss'] = loss
-    return loss, end_points
-
-
-def get_loss(logits, labels, pre_cal_weights):
-    # calculate the weighted cross entropy according to the inverse frequency
-    class_weights = torch.from_numpy(pre_cal_weights).type_as(logits)
-    # one_hot_labels = F.one_hot(labels, self.config.num_classes)
-    # print(logits.shape, labels.shape, pre_cal_weights.shape)
-    if logits.shape[0] == 0:
-        print('get_loss: with shape zero', flush=True)
-        return torch.Tensor(1).type_as(logits).mean()
-
-    criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='none')
-    output_loss = criterion(logits, labels)
-    output_loss = output_loss.mean()
-    return output_loss

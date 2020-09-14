@@ -1,6 +1,6 @@
 common:
     model:
-        name: SPConvv1
+        name: RandLANetv2
         dataset: SemanticKITTI
         feature_channel: 3
     logs:
@@ -18,9 +18,6 @@ train:
     # batch_size = 4  # batch_size during training
     # val_batch_size = 16  # batch_size during validation and test
     # train_steps = 500  # Number of steps per epochs
-    # val_steps = 100  # Number of validation steps per epoch
-    # max_epoch = 100  # maximum epoch during training (100*500)
-    # learning_rate = 1e-2  # initial learning rate
     # lr_decays = {i: 0.95 for i in range(0, 500)}  # decay rate of learning rate
     batch_size: 6
     workers: 6
@@ -29,35 +26,29 @@ train:
         test_id: 11
         mode: training
         data_path: /data/dataset/semantickitti/dataset/sequences_0.06
-        # num_points: 4096 # 4096 * 2
-        # num_points: 8192 # 4096 * 2
-        num_points: 16384 # 4096 * 2
     optimizer:
         name: Adam
         weight_decay: 0
     lr_scheduler:
         type: lr_scheduler_step
-        step_size: 3000
+        step_size: 4000
         gamma: 0.95
         base_lr: 0.01
     runner:
         name: iteration
-        max_iter: 300000
+        max_iter: 400000
         # test and save
         test_freq: 2000
-        save_freq: 300000
+        save_freq: 400000
         log_freq: 10
         snapshot_save_path: snapshot
 test:
     batch_size: 6
     workers: 4
-    dataset: 
+    dataset:
         validationset:
             name: SemanticKITTIDataset
             test_id: 11
             mode: validation
             data_path: /data/dataset/semantickitti/dataset/sequences_0.06
-            # num_points: 4096 # 4096 * 2
-            # num_points: 8192 # 4096 * 2
-            num_points: 16384 # 4096 * 2
 

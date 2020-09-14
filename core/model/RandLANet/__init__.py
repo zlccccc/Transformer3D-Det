@@ -5,6 +5,7 @@ import re
 
 module_dict = {
     'RandLANetv1': 'RandLANetv1.RandLANetv1',
+    'RandLANetv2': 'RandLANetv2.RandLANetv2',
     'SPConvv1': 'SPConvv1.SPConvv1'
 }
 
