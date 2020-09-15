@@ -267,12 +267,13 @@ class Att_pooling(nn.Module):
 def reduce_points(end_points, cfg):
     logits = end_points['logits']
     labels = end_points['labels']
+    assert logits.shape[1] == cfg.num_classes, 'logits.shape not right'
 
     logits = logits.transpose(1, 2).reshape(-1, cfg.num_classes)
     labels = labels.reshape(-1)
 
     # Boolean mask of points that should be ignored
-    ignored_bool = labels == 0
+    ignored_bool = labels == -1  # all False
     for ign_label in cfg.ignored_label_inds:
         ignored_bool = ignored_bool | (labels == ign_label)
 
@@ -284,7 +285,7 @@ def reduce_points(end_points, cfg):
     valid_labels_init = labels[valid_idx]
 
     # Reduce label values in the range of logit shape
-    reducing_list = torch.arange(0, cfg.num_classes+1).long().cuda()
+    reducing_list = torch.arange(0, cfg.num_classes).long().cuda()
     inserted_value = torch.zeros((1,)).long().cuda()
     for ign_label in cfg.ignored_label_inds:
         reducing_list = torch.cat([reducing_list[:ign_label], inserted_value, reducing_list[ign_label:]], 0)

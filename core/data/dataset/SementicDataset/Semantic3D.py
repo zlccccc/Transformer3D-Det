@@ -288,7 +288,7 @@ class Semantic3DDataset(torch_data.Dataset):
         if cfg.augment_scale_anisotropic:
             s = np.random.rand(1, 3) * (max_s - min_s) + min_s
         else:
-            s = np.random.rand(1, 3) * (max_s - min_s) + min_s
+            s = np.random.rand(1, 1) * (max_s - min_s) + min_s
 
         symmetries = []
         for i in range(3):

@@ -12,8 +12,8 @@ import torch
 class SemanticKITTIDataset(torch_data.Dataset):
     def __init__(self, mode, test_id=None, data_path='/data/DataSet/semantic-kitti/dataset/sequences_0.06', num_points=None):
         if num_points is not None:
-           assert isinstance(num_points, int)
-           cfg.num_points = num_points
+            assert isinstance(num_points, int), 'num_points should be an integer'
+            cfg.num_points = num_points
         self.name = 'SemanticKITTI'
         self.dataset_path = data_path
         self.label_to_names = {0: 'unlabeled',
