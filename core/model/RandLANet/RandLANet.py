@@ -56,6 +56,7 @@ class RandLANet(nn.Module):
 
         features = features.unsqueeze(dim=3)  # Batch*channel*npoints*1
 
+        # print('Initial feature shape', features.shape, features.mean(), features.std())
         # ###########################Encoder############################
         f_encoder_list = []
         for i in range(self.config.num_layers):
@@ -63,7 +64,7 @@ class RandLANet(nn.Module):
 
             f_sampled_i = self.random_sample(f_encoder_i, inputs['sub_idx'][i])
             features = f_sampled_i
-            # print('downsample encoder feature shape', features.shape)
+            # print('downsample encoder feature shape', features.shape, features.mean(), features.std())
             if i == 0:
                 f_encoder_list.append(f_encoder_i)
             f_encoder_list.append(f_sampled_i)
@@ -79,7 +80,7 @@ class RandLANet(nn.Module):
             f_decoder_i = self.decoder_blocks[j](torch.cat([f_encoder_list[-j - 2], f_interp_i], dim=1))
 
             features = f_decoder_i
-            # print('upsample decoder feature shape', features.shape)
+            # print('upsample decoder feature shape', features.shape, features.mean(), features.std())
             f_decoder_list.append(f_decoder_i)
             # torch.cuda.empty_cache()
         # ###########################Decoder############################

@@ -55,8 +55,9 @@ class RandLANet(nn.Module):
         features = inputs['features']  # Batch*channel*npoints
         # print(features.std(), 'features std', flush=True)
         if self.dataset_name == 'SemanticKITTI':
-            features = features / 6 # normalize
-        elif self.dataset_name == 'SemanticKITTI':
+            pass
+            # features = features / 6 # normalize
+        elif self.dataset_name == 'Semantic3D':
             pass
         else:
             raise NotImplementedError(self.dataset_name)
