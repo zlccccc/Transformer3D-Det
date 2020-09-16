@@ -275,22 +275,26 @@ def reduce_points(end_points, cfg):
     # Boolean mask of points that should be ignored
     ignored_bool = labels == -1  # all False
     for ign_label in cfg.ignored_label_inds:
+        # print(ign_label, 'ign label')
         ignored_bool = ignored_bool | (labels == ign_label)
 
     # Collect logits and labels that are not ignored
     valid_idx = ignored_bool == 0
-    # print(ignored_bool.shape, valid_idx.shape, logits.shape, '<< idx shape (when calculating useful pos)')
+    # print(ignored_bool.shape, valid_idx.shape, logits.shape, '<< idx shape (when calculating useful pos)', flush=True)
     valid_logits = logits[valid_idx, :]
+    # print(labels[ignored_bool].shape, labels[ignored_bool].max(), '<< min')
     # print('valid.shape', valid_logits.shape, 'logits.val', logits.detach().cpu().mean(), logits.detach().cpu().std(), 'labels shape', labels.shape, flush=True)
     valid_labels_init = labels[valid_idx]
 
     # Reduce label values in the range of logit shape
-    reducing_list = torch.arange(0, cfg.num_classes).long().cuda()
+    reducing_list = torch.arange(0, cfg.num_classes + len(cfg.ignored_label_inds)).long().cuda()
     inserted_value = torch.zeros((1,)).long().cuda()
     for ign_label in cfg.ignored_label_inds:
         reducing_list = torch.cat([reducing_list[:ign_label], inserted_value, reducing_list[ign_label:]], 0)
+    # print(reducing_list)
     valid_labels = torch.gather(reducing_list, 0, valid_labels_init)
-
+    # print(valid_labels[:4], valid_labels_init[:4])
+    # print(valid_labels.min(), valid_labels.max(), valid_logits.shape, flush=True)
     end_points['valid_logits'], end_points['valid_labels'] = valid_logits, valid_labels
     # print(valid_logits.shape, valid_labels.shape, reducing_list.shape, flush=True)
     return end_points
@@ -312,7 +316,7 @@ def get_loss(logits, labels, pre_cal_weights):
     # one_hot_labels = F.one_hot(labels, self.config.num_classes)
     # print(logits.shape, labels.shape, pre_cal_weights.shape)
     if logits.shape[0] == 0:
-        print('get_loss: with shape zero', flush=True)
+        print('Error when get_loss: with shape zero', flush=True)
         return torch.Tensor(1).type_as(logits).mean()
 
     criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='none')
