@@ -44,64 +44,68 @@ class HighResolutionBlock(nn.Module):
         self.moduledict = nn.ModuleDict()
         self.in_channels = in_channels  # for feature
         self.final_channels = [0 for i in range(out_length)]
-        fc_channels = [32, 64, 128, 256]
+        fc_channels = [32, 64, 96, 128, 256]  # first stage
+        out_channels = [32, 48, 64, 96, 128]
+        self.fc_channels = fc_channels
+        self.out_channels = out_channels
         for id, channel in enumerate(in_channels):
             module_name = "%d" % id
             if id < len(fc_channels):
                 _in, fin = in_channels[id], fc_channels[id]
-                nowmodel = Conv3d(_in, fin, conv=spconv.SubMConv3d)
+                nowmodel = Conv3d(_in, fin, 1, conv=spconv.SubMConv3d)
             else:
                 raise NotImplementedError('HRNet: Self-Extension Not Implemented')
             self.fc_dict[module_name] = nowmodel
 
         for id, channel in enumerate(in_channels):  # after
             for out_id in range(out_length):
-                module_name = "%d_%d" % (id, out_id)
-                in_channel = fc_channels[id]  # input channel(after fc)
-                nowmodel, fin = self._make_block_layer(id, out_id, in_channel, module_name, way)
+                module_name = "%d_%d" % (id, out_id) # input channel(after fc)
+                nowmodel, fin = self._make_block_layer(id, out_id, module_name, way)
                 if nowmodel is not None:
                     self.moduledict[module_name] = nowmodel
                     self.final_channels[out_id] += fin
+        self.concat = spconv.JoinTable()
 
-    def _make_block_layer(self, layer_in_id: int, layer_out_id: int, in_channel, module_name, way):
-        fc_channels = [32, 64, 128, 256]
+    def _make_block_layer(self, layer_in_id: int, layer_out_id: int, module_name, way):
+        fc_channels = self.fc_channels
         _in = fc_channels[layer_in_id]
         if layer_in_id == layer_out_id:  # self mlp none?
-            out_channels = [32, 64, 128, 256]
+            out_channels = self.out_channels
+            kernelsize = 1 if layer_in_id == 0 else 3
             if layer_in_id < len(out_channels):
                 fin = out_channels[layer_in_id]
-                nowmodel = Conv3d(_in, fin, 3, conv=spconv.SubMConv3d)
+                nowmodel = Conv3d(_in, fin, kernelsize, conv=spconv.SubMConv3d, indice_key = '%d' % layer_in_id)
                 out_channels[layer_out_id] += fin
             else:
-                raise NotImplementedError('HRNet: Self-Extension Not Implemented %d' % layer_in_id)
+                raise NotImplementedError('HRNet: self-extension way %s layer %s Not Implemented' % (way, module_name))
         elif layer_in_id + 1 == layer_out_id:  # downsample
             keyword = "%d%d" % (layer_in_id, layer_out_id)
-            out_channels = [32, 64, 128, 256]
+            out_channels = self.out_channels
+            kernelsize = 2 if layer_in_id == 0 else 3
             if layer_out_id < len(out_channels):
                 fin = out_channels[layer_in_id]
-                nowmodel, fin = Conv3d(_in, fin, 3, 2, indice_key=keyword), 64
+                nowmodel = Conv3d(_in, fin, kernelsize, 2, indice_key=keyword)
             else:
                 raise NotImplementedError('HRNet: downsample way %s layer %s Not Implemented' % (way, module_name))
         elif layer_in_id - 1 == layer_out_id:  # upsample
             keyword = "%d%d" % (layer_out_id, layer_in_id)
-            out_channels = [32, 64, 128, 256]
+            out_channels = self.out_channels
+            kernelsize = 2 if layer_out_id == 0 else 3  # rev
             if layer_out_id < len(out_channels):
                 fin = out_channels[layer_in_id]
-                nowmodel, fin = Conv3d(_in, fin, 3, 2, conv=spconv.SparseInverseConv3d, indice_key=keyword), 64
+                nowmodel = Conv3d(_in, fin, kernelsize, conv=spconv.SparseInverseConv3d, indice_key=keyword)
             else:
                 raise NotImplementedError('HRNet: upsample way %s layer %s Not Implemented' % (way, module_name))
         else:
             return None, 0
-        print('making_block_layer', layer_in_id, layer_out_id, in_channel, way, type(nowmodel))
+        print('making_block_layer', layer_in_id, layer_out_id, _in, fin, way, type(nowmodel))
         return nowmodel, fin
 
     def _forward_layer(self, layer_in_id, layer_out_id, model, layer_in_dict, layer_out_dict):
         # print('forwarding %d->%d' % (layer_in_id, layer_out_id), type(model))
-        if layer_in_id == layer_out_id:
-            layer_out_dict['final_features'].append(model(layer_in_dict['features']))
-        elif layer_in_id - 1 == layer_out_id or layer_in_id + 1 == layer_out_id:
-            input = layer_in_dict['sparse_input']
-            layer_out_dict.append(model(input))
+        if layer_in_id == layer_out_id or layer_in_id - 1 == layer_out_id or layer_in_id + 1 == layer_out_id:
+            input = layer_in_dict['features']
+            layer_out_dict['final_features'].append(model(input))
         else:
             raise NotImplementedError('_forward layer',layer_in_id, layer_out_id)
         pass
@@ -124,7 +128,12 @@ class HighResolutionBlock(nn.Module):
             in_layer, out_layer = map(int, key.split('_'))
             self._forward_layer(in_layer, out_layer, layer, inputlist[in_layer], inputlist[out_layer])
         for id in range(len(self.final_channels)):
-            inputlist[id]['features'] = torch.cat(inputlist[id]['final_features'], dim=-1)
+            final_features = inputlist[id]['final_features']
+            # print('CONCAT length, ', len(final_features))
+            if len(final_features) == 1:
+                inputlist[id]['features'] = final_features[0]
+            else:
+                inputlist[id]['features'] = self.concat(final_features)
             del inputlist[id]['final_features']
         # for i, val in enumerate(self.final_channels):
         #     assert inputlist[i]['features'].shape[-1] == val, 'output_shape should be smae'
@@ -132,7 +141,7 @@ class HighResolutionBlock(nn.Module):
         return inputlist[: len(self.final_channels)]  # may remove some
 
 
-class SPConv(nn.Module):
+class HRSPConv(nn.Module):
     def __init__(self, config):
         super().__init__()
         dataset_name = config.get('dataset', 'SemanticKITTI')  # ONLY GET NAME
@@ -142,12 +151,12 @@ class SPConv(nn.Module):
         elif dataset_name == 'SemanticKITTI':
             self.config = ConfigSemanticKITTI
             self.config.voxel_generator_config = {
-                'voxel_size': [0.3, 0.3, 0.12],
-                # 'voxel_size' : [1, 1, 1],
+                'voxel_size': [0.16, 0.16, 0.12],
                 'point_cloud_range': [-90, -90, -40, 90, 90, 20],
                 'max_num_points': 30,
                 'max_voxels': 50000,
             }
+            self.config.voxel_maxsize = [1000, 1000, 300]
         else:
             raise NotImplementedError(dataset_name)
         self.class_weights = DP.get_class_weights(dataset_name)
@@ -163,10 +172,12 @@ class SPConv(nn.Module):
         self.layer0 = HighResolutionBlock([8], 2)
         self.layer1 = HighResolutionBlock(self.layer0.final_channels, 3)
         self.layer2 = HighResolutionBlock(self.layer1.final_channels, 4)
-        self.layer3 = HighResolutionBlock(self.layer2.final_channels, 4)
-        self.layer4 = HighResolutionBlock(self.layer3.final_channels, 3)
-        self.layer5 = HighResolutionBlock(self.layer4.final_channels, 2)
-        self.layer6 = HighResolutionBlock(self.layer5.final_channels, 1)
+        self.layer3 = HighResolutionBlock(self.layer2.final_channels, 5)
+        self.layer4 = HighResolutionBlock(self.layer3.final_channels, 4)
+        self.layer5 = HighResolutionBlock(self.layer4.final_channels, 3)
+        self.layer6 = HighResolutionBlock(self.layer5.final_channels, 2)
+        self.layer7 = HighResolutionBlock(self.layer6.final_channels, 1)
+        self.layer8 = HighResolutionBlock(self.layer7.final_channels, 1)
 
     def generate_voxel(self, xyz, features):
         # self.voxel_generator = spconv.utils.VoxelGenerator(**self.config.voxel_generator_config)
@@ -178,22 +189,34 @@ class SPConv(nn.Module):
         min_position = torch.from_numpy(np.array(C_range[:C])).type_as(xyz)
         max_position = torch.from_numpy(np.array(C_range[C:])).type_as(xyz)
         voxel_size = torch.from_numpy(np.array(self.config.voxel_generator_config['voxel_size'])).type_as(xyz)
-        voxel_maxposition = ((max_position - min_position) / voxel_size).int()
+        # right_voxel_maxposition = ((max_position - min_position) / voxel_size).int() # REAL
+        zero_voxel_position = (( - min_position) / voxel_size).int() # REAL
         # initialprint(min_position, voxel_size, ' < minpos; voxelsizepos')
-        xyz = ((xyz - min_position) / voxel_size).int()  # ???
+        voxel_maxposition = torch.from_numpy(np.array(self.config.voxel_maxsize))
+        xyz = ((xyz - min_position) / voxel_size).int()  # XYZ from voxelize
+        # print(torch.min(xyz, dim=1)[0] - xyz.float().mean(dim=1).int(), '<< min, torch xyz')
+        # print(torch.max(xyz, dim=1)[0] - xyz.float().mean(dim=1).int(), '<< max, torch xyz')
+        min_voxel_ind = torch.min(xyz, dim=1)[0]
+        min_voxel_ind = min_voxel_ind.view(B, 1, C).repeat(1, N, 1)
+        xyz = xyz - min_voxel_ind
+        # print(torch.max(torch.max(xyz, dim=1)[0], dim=0)[0], '<< max torch xyz')
+        # print(voxel_maxposition, flush=True)
+        # del_maxpos` = voxel_maxposition.view(1, 1, C).repeat(B, N, 1)
+        # xyz = min(xyz, voxel_maxposition - 1)  # 
         indices = torch.arange(0, B).view(B, 1, 1).repeat([1, N, 1])
         indices = indices.type_as(xyz)
         coors = torch.cat([indices, xyz], dim=-1)
         # print(features.shape, xyz.shape)
         # print(coors, '<< coors')
         features = features.reshape(-1, features.shape[-1])
-        features = features / (max_position - min_position) * 2  # normalize
+        # features = features / (max_position - min_position) * 2  # normalize; with bn not useful
         feature_cat = torch.ones([features.shape[0], 1]).type_as(features)
         features = torch.cat([feature_cat, features], dim=-1)
         # print(features.shape, feature_cat.shape, '<< input feature shape')
-        coors = coors.reshape(-1, coors.shape[-1])
         # print(torch.min(coors, dim=0)[0].cpu(), ' ; ', torch.max(coors, dim=0)[0].cpu(), '<< fin max and min', voxel_maxposition.cpu().tolist(), flush=True)
-        return coors, features, voxel_maxposition.cpu().tolist()
+        coors = coors.reshape(-1, coors.shape[-1])
+        # return coors, features, voxel_maxposition.cpu().tolist()
+        return coors, features, voxel_maxposition.tolist()
 
     @staticmethod
     def output_sptensor(feat, name):
@@ -208,7 +231,9 @@ class SPConv(nn.Module):
             print(key, len(value), value[0].shape, value[1].shape, ' << shape;', flush=True, end='')
             # print(np.array(value[2]).shape, value[3], value[4], flush=True)
             # print(value[2][:, :, :10], ' << val 2 indice compare')
-            print(np.array(value[2]).shape, value[4], flush=True)
+            print(np.array(value[2]).shape, 'pairs(max %d,sum %d,mean %.3f)' %(value[3].max(), value[3].sum(), value[3].float().mean()), value[4], flush=True)
+            # print(np.max(value[3]), value[4], flush=True)
+            # print(np.max(value[3]), value[4], flush=True)
             # pair: x-y link; next lines not useful
 
     @staticmethod
@@ -222,21 +247,26 @@ class SPConv(nn.Module):
         coors, features, voxel_maxposition = self.generate_voxel(xyz, features)
         initial = sptensor(features, coors.cpu(), voxel_maxposition, B)
         init_feat = self.conv0(initial)
-        feat0 = self.layer0([{'feature':init_feat}])
-        # print(len(feat0))
+        feat0 = self.layer0([{'features': init_feat}])
+        # exit(0)
         feat1 = self.layer1(feat0)
         feat2 = self.layer2(feat1)
         feat3 = self.layer3(feat2)
         feat4 = self.layer4(feat3)
         feat5 = self.layer5(feat4)
         feat6 = self.layer6(feat5)
+        feat7 = self.layer7(feat6)
+        feat8 = self.layer8(feat7)
         # self.output_sptensor(l0_feat, 'l0_feat')
         # print(type(feat), feat.indices.shape, feat.indice_dict, '<< feat dict')
         # exit()
-        final = self.fc(feat6[0]['feature'])
+        final = self.fc(feat8[0]['features'])
+        # self.output_spdict(final, 'final')
         point_result = final.features
         # print(point_result.shape, 'point shape', flush=True)
         point_result = point_result.reshape(B, N, -1)
         output = {}
         output['logits'] = point_result.permute(0, 2, 1)
+        # print(point_result.shape)
         return output
+

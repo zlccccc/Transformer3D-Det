@@ -311,7 +311,8 @@ def compute_loss(end_points, cfg):
 
 def get_loss(logits, labels, pre_cal_weights):
     # calculate the weighted cross entropy according to the inverse frequency
-    # print(pre_cal_weights, ' << dataset val weight', flush=True)
+    # print(len(pre_cal_weights[0]), ' << dataset val weight', flush=True)
+    # print(logits.shape)
     class_weights = torch.from_numpy(pre_cal_weights).type_as(logits)
     # one_hot_labels = F.one_hot(labels, self.config.num_classes)
     # print(logits.shape, labels.shape, pre_cal_weights.shape)
@@ -319,7 +320,10 @@ def get_loss(logits, labels, pre_cal_weights):
         print('Error when get_loss: with shape zero', flush=True)
         return torch.Tensor(1).type_as(logits).mean()
 
-    criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='none')
+    # criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='none')
+    # output_loss = criterion(logits, labels)
+    criterion = nn.CrossEntropyLoss(weight=class_weights.view(-1), reduction='none')
     output_loss = criterion(logits, labels)
+    # print(output_loss)
     output_loss = output_loss.mean()
     return output_loss

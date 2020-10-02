@@ -66,12 +66,12 @@ class SPConv(nn.Module):
         elif dataset_name == 'SemanticKITTI':
             self.config = ConfigSemanticKITTI
             self.config.voxel_generator_config = {
-                            'voxel_size' : [0.3, 0.3, 0.12],
-                            # 'voxel_size' : [1, 1, 1],
-                            'point_cloud_range' : [-90, -90, -40, 90, 90, 20],
-                            'max_num_points' : 30,
-                            'max_voxels' : 50000,
-                        }
+                'voxel_size': [0.16, 0.16, 0.12],
+                'point_cloud_range': [-90, -90, -40, 90, 90, 20],
+                'max_num_points': 30,
+                'max_voxels': 50000,
+            }
+            self.config.voxel_maxsize = [1000, 1000, 300]
         else:
             raise NotImplementedError(dataset_name)
         self.class_weights = DP.get_class_weights(dataset_name)
@@ -132,24 +132,35 @@ class SPConv(nn.Module):
         min_position = torch.from_numpy(np.array(C_range[:C])).type_as(xyz)
         max_position = torch.from_numpy(np.array(C_range[C:])).type_as(xyz)
         voxel_size = torch.from_numpy(np.array(self.config.voxel_generator_config['voxel_size'])).type_as(xyz)
-        voxel_maxposition = ((max_position - min_position) / voxel_size).int()
+        # right_voxel_maxposition = ((max_position - min_position) / voxel_size).int() # REAL
+        zero_voxel_position = (( - min_position) / voxel_size).int() # REAL
         # initialprint(min_position, voxel_size, ' < minpos; voxelsizepos')
-        xyz = ((xyz - min_position) / voxel_size).int()  # ???
+        voxel_maxposition = torch.from_numpy(np.array(self.config.voxel_maxsize))
+        xyz = ((xyz - min_position) / voxel_size).int()  # XYZ from voxelize
+        # print(torch.min(xyz, dim=1)[0] - xyz.float().mean(dim=1).int(), '<< min, torch xyz')
+        # print(torch.max(xyz, dim=1)[0] - xyz.float().mean(dim=1).int(), '<< max, torch xyz')
+        min_voxel_ind = torch.min(xyz, dim=1)[0]
+        min_voxel_ind = min_voxel_ind.view(B, 1, C).repeat(1, N, 1)
+        xyz = xyz - min_voxel_ind
+        # print(torch.max(torch.max(xyz, dim=1)[0], dim=0)[0], '<< max torch xyz')
+        # print(voxel_maxposition, flush=True)
+        # del_maxpos` = voxel_maxposition.view(1, 1, C).repeat(B, N, 1)
+        # xyz = min(xyz, voxel_maxposition - 1)  # 
         indices = torch.arange(0, B).view(B, 1, 1).repeat([1, N, 1])
         indices = indices.type_as(xyz)
         coors = torch.cat([indices, xyz], dim=-1)
         # print(features.shape, xyz.shape)
         # print(coors, '<< coors')
         features = features.reshape(-1, features.shape[-1])
-        features = features / (max_position - min_position) * 2  # normalize
+        # features = features / (max_position - min_position) * 2  # normalize; with bn not useful
         feature_cat = torch.ones([features.shape[0], 1]).type_as(features)
         features = torch.cat([feature_cat, features], dim=-1)
         # print(features.shape, feature_cat.shape, '<< input feature shape')
-        coors = coors.reshape(-1, coors.shape[-1])
         # print(torch.min(coors, dim=0)[0].cpu(), ' ; ', torch.max(coors, dim=0)[0].cpu(), '<< fin max and min', voxel_maxposition.cpu().tolist(), flush=True)
-        return coors, features, voxel_maxposition.cpu().tolist()
+        coors = coors.reshape(-1, coors.shape[-1])
+        # return coors, features, voxel_maxposition.cpu().tolist()
+        return coors, features, voxel_maxposition.tolist()
 
-    @staticmethod
     def output_sptensor(feat, name):
         print(type(feat), feat.features.shape, feat.indices.shape, feat.spatial_shape, '<<', name)
 

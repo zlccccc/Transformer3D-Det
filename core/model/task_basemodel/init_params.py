@@ -59,8 +59,14 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
     elif isinstance(m, (nn.modules.container.ModuleList, nn.modules.container.Sequential, nn.modules.container.ModuleDict)):
         pass
     else:
-        if 'core.model.' not in str(type(m)):
-            print('initialize not impl', type(m))
+        if 'Sequential' in str(type(m)) or 'ModuleDict' in str(type(m)) or 'ModuleList' in str(type(m)):
+            pass
+        elif 'core.model.' in str(type(m)):
+            pass
+        elif 'spconv.' in str(type(m)):  # intial
+            pass
+        else:
+            print('initialize not impl', type(m), flush=True)
         pass
         # print('initialize not impl', type(m))
         # raise NotImplementedError(type(m))

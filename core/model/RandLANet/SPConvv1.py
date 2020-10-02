@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 from .RandLANet import reduce_points, compute_loss, IoUCalculator, compute_acc
 from .SPConv import SPConv
+from .HRSPConv import HRSPConv
 from core.model.task_basemodel.backbone.base_model import base_module
 from thop import profile, clever_format
 
@@ -16,7 +17,14 @@ from thop import profile, clever_format
 class SPConvv1(base_module):
     def __init__(self, config):
         super(SPConvv1, self).__init__()
-        self.backbone = SPConv(config)
+        backbone_name = config.get('backbone_name', 'SPConv')
+        print('using backbone %s'%backbone_name)
+        if backbone_name == 'SPConv':
+            self.backbone = SPConv(config)
+        elif backbone_name == 'HRSPConv':
+            self.backbone = HRSPConv(config)
+        else:
+            raise NotImplementedError(backbone_name)
         dataset_name = config.get('dataset', 'SemanticKITTI')  # ONLY GET NAME
         self.dataset_name = dataset_name
         self.calculator, self.iou_n_count = None, 1

@@ -15,6 +15,7 @@ dataset_dict = {
     'ShapeNetDataset': 'Segmentation3D.ShapeNetDataset.ShapeNetDataset',
     'Semantic3DDataset': 'SementicDataset.Semantic3D.Semantic3DDataset',
     'SemanticKITTIDataset': 'SementicDataset.SemanticKITTI.SemanticKITTIDataset',
+    'SemanticKITTIAUGDataset': 'SementicDataset.SemanticKITTIAUG.SemanticKITTIDataset',
 }
 
 
