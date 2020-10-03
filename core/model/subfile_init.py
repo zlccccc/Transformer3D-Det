@@ -5,7 +5,7 @@ import re
 
 def sub_model_entry(config, package_name, module_dict):
     package_name = re.split(r'[\\/]', package_name)
-    print('SPLITED package name', package_name)
+    # print('SPLITED package name', package_name)
     package_name = package_name[-2]
     name = config.name
     print('try loading from model package %s: ' % package_name, module_dict.keys())

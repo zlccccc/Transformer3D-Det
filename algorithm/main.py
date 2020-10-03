@@ -98,7 +98,7 @@ def main():
 
     config.train.optimizer['lr'] = base_lr  # for base use (not grouped)
     optimizer = get_optimizer(config.train.optimizer, parameters)
-    # load model pa rams
+    # load model params
     lowest_err, last_iter = float('inf'), -1
     if config.common.load.load:  # load model
         load_path = config.common.load.path

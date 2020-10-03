@@ -16,6 +16,7 @@ dataset_dict = {
     'Semantic3DDataset': 'SementicDataset.Semantic3D.Semantic3DDataset',
     'SemanticKITTIDataset': 'SementicDataset.SemanticKITTI.SemanticKITTIDataset',
     'SemanticKITTIAUGDataset': 'SementicDataset.SemanticKITTIAUG.SemanticKITTIDataset',
+    'Scannetv2': 'Detection3D.scannet.scannet_detection_dataset.ScannetDetectionDataset',
 }
 
 
@@ -38,6 +39,7 @@ def get_one_dataset(config: dict):
     except Exception as e:
         print('dataset path', pathlist, 'not exist')
         print(str(e))
+        raise e
         datasetclass = None
     return datasetclass(**config)
 
