@@ -29,5 +29,5 @@ def sub_model_entry(config, package_name, module_dict):
         print('model path', pathlist, 'not exist')
         print(str(e))
         modelclass = None
-        raise NotImplementedError(pathlist)
+        raise e
     return modelclass(config)

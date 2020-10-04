@@ -200,9 +200,9 @@ def eval_det(pred_all, gt_all, ovthresh=0.25, use_07_metric=False, get_iou_func=
     prec = {}
     ap = {}
     for classname in gt.keys():
-        print('Computing AP for class: ', classname)
+        print('Computing AP for class: ', classname, end='   ')
         rec[classname], prec[classname], ap[classname] = eval_det_cls(pred[classname], gt[classname], ovthresh, use_07_metric, get_iou_func)
-        print(classname, ap[classname])
+        print(classname, ap[classname], flush=True)
     
     return rec, prec, ap 
 
@@ -251,6 +251,7 @@ def eval_det_multiprocessing(pred_all, gt_all, ovthresh=0.25, use_07_metric=Fals
             rec[classname] = 0
             prec[classname] = 0
             ap[classname] = 0
-        print(classname, ap[classname])
+        # TODO CHECK AP FOR EACH CLASS
+        # print('Computing AP for class: ', classname, ap[classname])
     
     return rec, prec, ap 

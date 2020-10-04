@@ -51,7 +51,7 @@ class logger():
                 return '%s%.3f%s' % (ForeColor, floatvalue, Style.RESET_ALL), floatvalue
             # print(value, value.view(-1).shape)
             str_val = '' if not all else 'torch[' + ','.join(['%.2f' % val for val in value]) + ']'
-            # print('log', value) TODO
+            # print('log', value) TODO CHECK IT OK
             # print('forward ?? err? ', value)
             floatvalue = float(torch.mean(value))
             # print(floatvalue, str_val)
@@ -109,27 +109,30 @@ class logger():
         ALL_VAL = '%s%s%s' % (Fore.LIGHTYELLOW_EX, ALL_VAL, Style.RESET_ALL)
         return '{%s[%s]}' % (ALL_VAL, '|'.join(tmp))
 
-    def _record_value(self, info, keywords, info_type):
+    def _record_value(self, info, keywords, info_type):  # save value
         assert info_type in self.info.keys(), 'info type should in self.info'
         update_okay = False
         for key, value in info.items():
+            keyword_in_key = False
             for keyword in keywords:
                 if keyword in key:
-                    update_okay = True
+                    keyword_in_key = True
                     # print('record key %s, infotype %s' % (key, info_type))
                     assert keyword in info.keys(), 'base name should in info.keys (%s)' % keyword
-                    if key in self.info[info_type].keys():
-                        self.info[info_type][key] += value
-                    else:
-                        self.info[info_type][key] = value
-                    break
+            if not keyword_in_key:
+                continue
+            update_okay = True
+            if key in self.info[info_type].keys():
+                self.info[info_type][key] += value
+            else:
+                self.info[info_type][key] = value
         if update_okay:
             if 'log_n_count' in self.info[info_type].keys():
                 self.info[info_type]['log_n_count'] += 1
             else:
                 self.info[info_type]['log_n_count'] = 1
 
-    def _update_normal(self, info: dict, shouldprint: bool, pinfo):
+    def _update_normal(self, info: dict, shouldprint: bool, pinfo):  # update all value
         # baseline
         # print(info, pinfo)
         self._direct_print(info, '_out')

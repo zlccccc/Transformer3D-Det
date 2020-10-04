@@ -13,7 +13,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(ROOT_DIR)
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
+# sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 sys.path.append(os.path.join(ROOT_DIR, 'pointnet2'))
 
 from pointnet2_modules import PointnetSAModuleVotes, PointnetFPModule

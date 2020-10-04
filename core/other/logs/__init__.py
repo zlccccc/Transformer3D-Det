@@ -10,12 +10,14 @@ class Loggers():
         print(logger_configs)  # TODO: for debug
         for key, value in logger_configs.items():
             relative_key = '.' + key
-            print('relatively import', relative_key, 'from core.other.logs.loggers')
-            try:
-                logtype = importlib.import_module(relative_key, 'core.other.logs.loggers')
+            print('relatively import', key, 'from core.other.logs.loggers')
+            try: 
+                # logtype = importlib.import_module(relative_key, 'core.other.logs.loggers')
+                logtype = importlib.import_module('core.other.logs.loggers' + relative_key)
             except Exception as e:
                 print('logger', key, 'not exist')
                 print(str(e))
+                raise e
             # import core.other.logs.loggers.base_logger
             # logtype = importlib.import_module('core.other.logs.loggers.%s' % key)
             if key != basename:

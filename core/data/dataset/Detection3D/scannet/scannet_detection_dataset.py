@@ -173,6 +173,8 @@ class ScannetDetectionDataset(Dataset):
         ret_dict['vote_label_mask'] = point_votes_mask.astype(np.int64)
         ret_dict['scan_idx'] = np.array(idx).astype(np.int64)
         ret_dict['pcl_color'] = pcl_color
+        # for key, value in ret_dict.items():
+        #     print(key, value.shape)
         return ret_dict
 
 ############# Visualizaion ########
