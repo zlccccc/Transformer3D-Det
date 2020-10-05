@@ -43,7 +43,7 @@ train:
         warmup_steps: 0
     transform: None # TODO
     runner:
-        name: iteration
+        name: iterBNDecay
         max_iter: 35000
         # test and save
         test_freq: 1600

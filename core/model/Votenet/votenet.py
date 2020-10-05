@@ -93,7 +93,7 @@ class votenet(base_module):
         self.ap_calculator_25.step(batch_pred_map_cls, batch_gt_map_cls)
         self.ap_calculator_50.step(batch_pred_map_cls, batch_gt_map_cls)
         # metric calculating
-        fin_out['error'] = fin_out['all_error'].clone() 
+        fin_out['error'] = 0
         fin_out['n_count'] = 1
         # TODO: error calculate not right (should not mean in batch)
         # fin_out['n_count'] = 1
@@ -107,8 +107,12 @@ class votenet(base_module):
         metrics_dict_50 = self.ap_calculator_50.compute_metrics()
         output['mAP@0.50_error'] = metrics_dict_50['mAP'] * self.ap_n_count
         output['AR@0.50_error'] = metrics_dict_50['AR'] * self.ap_n_count
-        output['error'] = 1 - output['mAP@0.50_error'] 
+        output['error'] = self.ap_n_count - output['mAP@0.50_error'] 
         # Evaluate average precision
+        print('Eval--mAP@0.25', metrics_dict_25['mAP'])
+        print('Eval--mAP@0.50', metrics_dict_50['mAP'])
+        print('Eval-----AR@0.25', metrics_dict_25['AR'])
+        print('Eval-----AR@0.50', metrics_dict_50['AR'])
         for key in metrics_dict_25:
             print('eval %s: %f'%(key, metrics_dict_25[key]), flush=True)
         return output
