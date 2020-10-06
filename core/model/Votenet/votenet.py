@@ -27,7 +27,7 @@ class votenet(base_module):
                                vote_factor=config.vote_factor,
                                sampling=config.cluster_sampling)
             self.criterion = get_loss
-        if config.net_type == 'detr':
+        elif config.net_type == 'detr':
             from .votedetr.votedetr import VoteDetr, get_loss
             from ap_helper import APCalculator, parse_predictions, parse_groundtruths
             self.APCalculator = APCalculator
@@ -41,7 +41,7 @@ class votenet(base_module):
                                 input_feature_dim=config.num_input_channel,
                                 vote_factor=config.vote_factor,
                                 sampling=config.cluster_sampling,
-                                config_transformer=config.config_transformer)
+                                config_transformer=config.transformer)
             self.criterion = get_loss
         else:
             raise NotImplementedError(config.net_type)
@@ -55,6 +55,12 @@ class votenet(base_module):
         for key in input:
             assert(key not in output)
             output[key] = input[key]
+            # value = input[key]
+            # if isinstance(value, torch.Tensor):
+            #     print(key, value.shape, '<<< input shape')
+            # else:
+            #     print(key, value)
+        # exit()
         loss, output = self.criterion(output, self.DATASET_CONFIG)
         fin_out = {}
         for key, value in output.items():

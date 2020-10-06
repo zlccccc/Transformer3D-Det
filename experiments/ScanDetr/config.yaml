@@ -8,13 +8,14 @@ common:
         vote_factor: 1
         cluster_sampling: vote_fps
         transformer:  # just for transformer
+            position_embedding: sine
             enc_layers: 6
             dec_layers: 6
             dim_feedforward: 2048
-            hidden_dim: 256
+            hidden_dim: 288
             dropout: 0.1
             nheads: 8
-            num_queries: 100
+            num_queries: 80
             pre_norm: False
     logs:
         base_logger:

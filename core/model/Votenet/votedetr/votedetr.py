@@ -17,6 +17,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 MODEL_DIR = os.path.join(ROOT_DIR, 'models')
 sys.path.append(MODEL_DIR)
+sys.path.append(BASE_DIR)
+print('\n'.join(sys.path))
 from backbone_module import Pointnet2Backbone
 from voting_module import VotingModule
 from proposal_votenet import ProposalModule
@@ -70,7 +72,7 @@ class VoteDetr(nn.Module):
 
         # Vote aggregation and detection
         self.pnet = ProposalModule(num_class, num_heading_bin, num_size_cluster,
-                                   mean_size_arr, num_proposal, config_transformer)
+                                   mean_size_arr, num_proposal, sampling, config_transformer=config_transformer)
 
     def forward(self, inputs):
         """ Forward pass of the network

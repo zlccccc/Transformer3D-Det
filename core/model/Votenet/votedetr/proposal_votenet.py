@@ -11,16 +11,45 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'pointnet2'))
-sys.path.append(os.path.join(ROOT_DIR, 'votedetr'))  # DETR
+sys.path.append(BASE_DIR)  # DETR
 
 from pointnet2_modules import PointnetSAModuleVotes
 import pointnet2_utils
-from .detr3d import DETR3D
+from detr3d import DETR3D
 
 
-def decode_scores(output_dict, end_points):  # TODO CHANGE IT
+def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr):  # TODO CHANGE IT
     # net_transposed = net.transpose(2, 1)
     # TODO CHANGE OUTPUT_DICT
+    pred_logits = output_dict['pred_logits']
+    pred_boxes = output_dict['pred_boxes']
+    print(pred_logits.shape, pred_boxes.shape, '<< decode shape score')
+
+    batch_size = pred_boxes.shape[0]
+    num_proposal = pred_boxes.shape[1]
+
+    objectness_scores = pred_logits[:,:,0:2]  # TODO CHANGE IT; JUST SOFTMAX
+    end_points['objectness_scores'] = objectness_scores
+    sem_cls_scores = pred_boxes[:,:,2:2+num_class] # Bxnum_proposalx10
+    end_points['sem_cls_scores'] = sem_cls_scores
+
+    center = pred_boxes[:,:,0:3] # (batch_size, num_proposal, 3) TODO RESIDUAL
+    end_points['center'] = center
+
+    heading_scores = pred_boxes[:,:,3:3+num_heading_bin]  # theta; todo change it
+    heading_residuals_normalized = pred_boxes[:,:,3+num_heading_bin:3+num_heading_bin*2]
+    end_points['heading_scores'] = heading_scores # Bxnum_proposalxnum_heading_bin
+    end_points['heading_residuals_normalized'] = heading_residuals_normalized # Bxnum_proposalxnum_heading_bin (should be -1 to 1)
+    end_points['heading_residuals'] = heading_residuals_normalized * (np.pi/num_heading_bin) # Bxnum_proposalxnum_heading_bin
+
+    size_scores = pred_boxes[:,:,3+num_heading_bin*2:3+num_heading_bin*2+num_size_cluster]
+    size_residuals_normalized = pred_boxes[:,:,3+num_heading_bin*2+num_size_cluster:3+num_heading_bin*2+num_size_cluster*4].view([batch_size, num_proposal, num_size_cluster, 3]) # Bxnum_proposalxnum_size_clusterx3 TODO REMOVE BBOX-SIZE-DEFINED
+    end_points['size_scores'] = size_scores
+    end_points['size_residuals_normalized'] = size_residuals_normalized
+    mean_size = torch.from_numpy(mean_size_arr.astype(np.float32)).type_as(pred_boxes).unsqueeze(0).unsqueeze(0)
+    end_points['size_residuals'] = size_residuals_normalized * mean_size
+    print(3+num_heading_bin*2+num_size_cluster*4, ' <<< bbox heading and size tensor shape')
+
     return end_points
 
 
@@ -28,6 +57,7 @@ class ProposalModule(nn.Module):
     def __init__(self, num_class, num_heading_bin, num_size_cluster, mean_size_arr, num_proposal, sampling,
                  seed_feat_dim=256, config_transformer=None):
         super().__init__()
+        print(config_transformer, '<< config transformer ')
 
         self.num_class = num_class
         self.num_heading_bin = num_heading_bin
@@ -55,7 +85,7 @@ class ProposalModule(nn.Module):
         self.bn1 = torch.nn.BatchNorm1d(128)
         self.bn2 = torch.nn.BatchNorm1d(128)
         # JUST FOR
-        self.detr = DETR3D(config_transformer, 128, num_class, num_class * 4, 79)
+        self.detr = DETR3D(config_transformer, input_channels=128, class_output_shape=2+num_class, bbox_output_shape=3+num_heading_bin*2+num_size_cluster*4)
 
     def forward(self, initial_xyz, xyz, features, end_points):  # initial_xyz and xyz(voted): just for encoding
         """
@@ -92,8 +122,10 @@ class ProposalModule(nn.Module):
 
         # end_points = decode_scores(features, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
 
-        output_dict = self.detr(xyz, features)
-        end_points = decode_scores(output_dict, end_points)
+        features = features.permute(0, 2, 1)
+        # print(xyz.shape, features.shape, '<< detr input feature dim')
+        output_dict = self.detr(xyz, features, end_points)
+        end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
 
         return end_points
 

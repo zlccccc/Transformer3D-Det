@@ -58,6 +58,10 @@ def init_params(m, BatchNorm2d, init_type, nonlinearity):
         pass
     elif isinstance(m, (nn.modules.container.ModuleList, nn.modules.container.Sequential, nn.modules.container.ModuleDict)):
         pass
+    elif isinstance(m, nn.Dropout):
+        pass
+    elif isinstance(m, nn.LayerNorm):
+        pass
     else:
         if 'Sequential' in str(type(m)) or 'ModuleDict' in str(type(m)) or 'ModuleList' in str(type(m)):
             pass

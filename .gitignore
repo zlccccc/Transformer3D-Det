@@ -13,3 +13,4 @@ build/
 *.swp
 Log*
 *.egg-info
+*.egg

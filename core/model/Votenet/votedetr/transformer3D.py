@@ -46,7 +46,7 @@ class Transformer3D(nn.Module):
 
     def forward(self, src, mask, query_embed, pos_embed):
         # flatten BxNxC to NxBxC
-        # print(src.shape, pos_embed.shape, query_embed.shape, '<<< initial src and query shape', mask.shape)
+        # print(src.shape, pos_embed.shape, query_embed.shape, '<<< initial src and query shape', mask.shape, flush=True)
         B, N, C = src.shape
         src = src.permute(1, 0, 2)
         pos_embed = pos_embed.permute(1, 0, 2)

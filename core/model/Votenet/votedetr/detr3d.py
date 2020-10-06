@@ -23,7 +23,7 @@ from position_encoding import build_position_encoding
 
 class DETR3D(nn.Module):  # just as a backbone; encoding afterward
     """ This is the DETR module that performs object detection """
-    def __init__(self, config_transformer, input_channels, num_classes, num_queries, bbox_output_shape, aux_loss=False):
+    def __init__(self, config_transformer, input_channels, class_output_shape, bbox_output_shape, aux_loss=False):
         """ Initializes the model.
         Parameters:
             transformer: torch module of the transformer architecture. See transformer.py
@@ -34,11 +34,12 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
             aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.
         """
         super().__init__()
+        num_queries = config_transformer.num_queries
         self.num_queries = num_queries
         self.transformer = build_transformer(config_transformer)
         hidden_dim = self.transformer.d_model
         self.input_proj = nn.Linear(input_channels, hidden_dim)
-        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+        self.class_embed = nn.Linear(hidden_dim, class_output_shape)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, bbox_output_shape, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
         self.pos_embd = build_position_encoding(config_transformer.position_embedding, hidden_dim)
@@ -61,12 +62,14 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         """
         B, N, _ = xyz.shape
         _, _, C = features.shape
-        mask = torch.zeros(B, N)
+        mask = torch.zeros(B, N).bool().to(xyz.device)
+        # print(mask, ' <<< mask')
         pos_embd = self.pos_embd(xyz)
         hs = self.transformer(self.input_proj(features), mask, self.query_embed.weight, pos_embd)[0]
         # return: dec_layer * B * Query * C
         outputs_class = self.class_embed(hs)
-        outputs_coord = self.bbox_embed(hs).sigmoid()
+        outputs_coord = self.bbox_embed(hs)
+        # outputs_coord = outputs_coord.sigmoid()
         # print(outputs_class.shape, outputs_coord.shape, 'output coord and class')
         output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}  # final
         if self.aux_loss:
