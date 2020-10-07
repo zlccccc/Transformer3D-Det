@@ -23,7 +23,6 @@ from backbone_module import Pointnet2Backbone
 from voting_module import VotingModule
 from proposal_votenet import ProposalModule
 from dump_helper import dump_results
-from loss_helper import get_loss
 
 
 class VoteDetr(nn.Module):

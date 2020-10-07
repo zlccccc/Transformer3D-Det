@@ -28,7 +28,7 @@ class votenet(base_module):
                                sampling=config.cluster_sampling)
             self.criterion = get_loss
         elif config.net_type == 'detr':
-            from .votedetr.votedetr import VoteDetr, get_loss
+            from .votedetr.votedetr import VoteDetr
             from ap_helper import APCalculator, parse_predictions, parse_groundtruths
             self.APCalculator = APCalculator
             self.parse_predictions = parse_predictions
@@ -42,6 +42,10 @@ class votenet(base_module):
                                 vote_factor=config.vote_factor,
                                 sampling=config.cluster_sampling,
                                 config_transformer=config.transformer)
+            if config.loss_type == 'NMS':
+                from detr_NMS_loss_helper import get_loss
+            elif config.loss_type == 'matching':
+                from detr_matching_loss_helper import get_loss
             self.criterion = get_loss
         else:
             raise NotImplementedError(config.net_type)

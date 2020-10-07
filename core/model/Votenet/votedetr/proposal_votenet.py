@@ -23,7 +23,7 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     # TODO CHANGE OUTPUT_DICT
     pred_logits = output_dict['pred_logits']
     pred_boxes = output_dict['pred_boxes']
-    print(pred_logits.shape, pred_boxes.shape, '<< decode shape score')
+    # print(pred_logits.shape, pred_boxes.shape, '<< decode shape score')
 
     batch_size = pred_boxes.shape[0]
     num_proposal = pred_boxes.shape[1]
@@ -48,7 +48,7 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     end_points['size_residuals_normalized'] = size_residuals_normalized
     mean_size = torch.from_numpy(mean_size_arr.astype(np.float32)).type_as(pred_boxes).unsqueeze(0).unsqueeze(0)
     end_points['size_residuals'] = size_residuals_normalized * mean_size
-    print(3+num_heading_bin*2+num_size_cluster*4, ' <<< bbox heading and size tensor shape')
+    # print(3+num_heading_bin*2+num_size_cluster*4, ' <<< bbox heading and size tensor shape')
 
     return end_points
 
@@ -122,9 +122,11 @@ class ProposalModule(nn.Module):
 
         # end_points = decode_scores(features, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
 
+        _xyz = torch.gather(initial_xyz, 1, sample_inds.long().unsqueeze(-1).repeat(1,1,3))
+        # print(initial_xyz.shape, xyz.shape, sample_inds.shape, _xyz.shape, '<< sample xyz shape', flush=True)
         features = features.permute(0, 2, 1)
         # print(xyz.shape, features.shape, '<< detr input feature dim')
-        output_dict = self.detr(xyz, features, end_points)
+        output_dict = self.detr(torch.cat([xyz, _xyz], dim=-1), features, end_points)
         end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
 
         return end_points

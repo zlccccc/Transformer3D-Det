@@ -42,12 +42,12 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         self.class_embed = nn.Linear(hidden_dim, class_output_shape)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, bbox_output_shape, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
-        self.pos_embd = build_position_encoding(config_transformer.position_embedding, hidden_dim)
+        self.pos_embd = build_position_encoding(config_transformer.position_embedding, hidden_dim, config_transformer.input_dim)
         self.aux_loss = aux_loss
 
     def forward(self, xyz, features, output):  # insert into output
         """ The forward expects a Dict, which consists of:
-               - input.xyz: [batch_size x N x 3]
+               - input.xyz: [batch_size x N x K]
                - input.features: [batch_size x N x C]
 
             It returns a dict with the following elements:

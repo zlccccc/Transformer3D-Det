@@ -16,7 +16,7 @@ class PositionEmbeddingSine3D(nn.Module):
     """
     def __init__(self, num_pos_feats=64, temperature=10000, scale=None):
         super().__init__()
-        self.num_pos_feats = num_pos_feats
+        self.num_pos_feats = num_pos_feats - 1  # concat with input dim
         self.temperature = temperature
         if scale is None:
             scale = 2 * math.pi
@@ -39,7 +39,7 @@ class PositionEmbeddingSine3D(nn.Module):
         dim_t = torch.arange(self.num_pos_feats, dtype=torch.float32, device=xyz.device)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
-        pos_dim = []
+        pos_dim = [xyz]
         for i in range(C):
             # print(xyz[:, :, i, None].shape, dim_t.shape)
             pos_dim.append(xyz[:, :, i, None].repeat(1, 1, self.num_pos_feats) / dim_t)
@@ -78,9 +78,10 @@ class PositionEmbeddingSine3D(nn.Module):
 #         return pos
 
 
-def build_position_encoding(position_embedding, hidden_dim, scale=None):
-    N_steps = hidden_dim // 3
-    assert hidden_dim % 3 == 0, 'position encoding not divisable by 3'
+def build_position_encoding(position_embedding, hidden_dim, input_dim, scale=None):
+    N_steps = hidden_dim // input_dim
+    assert hidden_dim % input_dim == 0, 'position encoding not divisable by input_dim'
+    assert N_steps > 0, 'you should have position encoding'
     if position_embedding in ('sine'):
         # TODO find a better way of exposing other arguments
         position_embedding = PositionEmbeddingSine3D(num_pos_feats=N_steps, scale=scale)  # normalize ??
