@@ -83,7 +83,7 @@ def compute_cascade_vote_loss(end_points):
     vote_loss /= vote_stage
     return vote_loss
 
-def compute_objectness_loss(end_points):
+def compute_objectness_loss(end_points):  # TODO WRONG CALCUATION (0:3 is not right)
     """ Compute objectness loss for the proposals.
 
     Args:

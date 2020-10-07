@@ -1,5 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-# 
+#
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
@@ -25,11 +25,27 @@ def huber_loss(error, delta=1.0):
     Ref: https://github.com/charlesq34/frustum-pointnets/blob/master/models/model_util.py
     """
     abs_error = torch.abs(error)
-    #quadratic = torch.min(abs_error, torch.FloatTensor([delta]))
+    # quadratic = torch.min(abs_error, torch.FloatTensor([delta]))
     quadratic = torch.clamp(abs_error, max=delta)
     linear = (abs_error - quadratic)
     loss = 0.5 * quadratic**2 + delta * linear
     return loss
+
+
+def pc_nn_distance(pc1, pc2, l1smooth=False, delta=1.0, l1=False):  # this func changed by zlc1114 at 2020/10/7
+    N = pc1.shape[1]
+    M = pc2.shape[1]
+    pc1_expand_tile = pc1.unsqueeze(2).repeat(1,1,M,1)
+    pc2_expand_tile = pc2.unsqueeze(1).repeat(1,N,1,1)
+    pc_diff = pc1_expand_tile - pc2_expand_tile
+    if l1smooth:
+        pc_dist = torch.sum(huber_loss(pc_diff, delta), dim=-1)  # (B,N,M)  # TODO it is not right(l1 should be sqrt)
+    elif l1:
+        pc_dist = torch.sum(torch.abs(pc_diff), dim=-1)  # (B,N,M)
+    else:
+        pc_dist = torch.sum(pc_diff ** 2, dim=-1)  # (B,N,M)
+    return pc_dist
+
 
 def nn_distance(pc1, pc2, l1smooth=False, delta=1.0, l1=False):
     """
@@ -44,21 +60,11 @@ def nn_distance(pc1, pc2, l1smooth=False, delta=1.0, l1=False):
         dist2: (B,M) torch float32 tensor
         idx2: (B,M) torch int64 tensor
     """
-    N = pc1.shape[1]
-    M = pc2.shape[1]
-    pc1_expand_tile = pc1.unsqueeze(2).repeat(1,1,M,1)
-    pc2_expand_tile = pc2.unsqueeze(1).repeat(1,N,1,1)
-    pc_diff = pc1_expand_tile - pc2_expand_tile
-    
-    if l1smooth:
-        pc_dist = torch.sum(huber_loss(pc_diff, delta), dim=-1) # (B,N,M)
-    elif l1:
-        pc_dist = torch.sum(torch.abs(pc_diff), dim=-1) # (B,N,M)
-    else:
-        pc_dist = torch.sum(pc_diff**2, dim=-1) # (B,N,M)
-    dist1, idx1 = torch.min(pc_dist, dim=2) # (B,N)
-    dist2, idx2 = torch.min(pc_dist, dim=1) # (B,M)
+    pc_dist = pc_nn_distance(pc1, pc2, l1smooth, delta, l1)
+    dist1, idx1 = torch.min(pc_dist, dim=2)  # (B,N)
+    dist2, idx2 = torch.min(pc_dist, dim=1)  # (B,M)
     return dist1, idx1, dist2, idx2
+
 
 def demo_nn_distance():
     np.random.seed(0)
