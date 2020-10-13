@@ -26,6 +26,9 @@ def iterRunner(info):
     loggers = info['loggers']
     lowest_error = info['lowest_error']
     last_iter = info['last_iter']
+    clip_grad_norm = config.get('clip_grad_norm', None)
+    if clip_grad_norm is not None:
+        print('CLIP GRAD NORM! MAX =', clip_grad_norm)
     t_start = time.time()
     T_START = time.time()
     if isinstance(model, torch.nn.DataParallel):
@@ -64,6 +67,10 @@ def iterRunner(info):
         loss = output['loss']
         # print(loss)
         loss.backward()
+        if clip_grad_norm is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad_norm)
+            # print('clip_max_norm', flush=True)
+            pass
         # model.average_gradients()  # multi card sync
         # print_grad(model, 'weight')
         # if iter_id % 1000 == 0:# or True:# and False:  # just print

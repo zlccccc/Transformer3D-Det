@@ -59,6 +59,7 @@ class ScannetDetectionDataset(Dataset):
         self.augment = augment
 
     def __len__(self):
+        # return 8
         return len(self.scan_names)
 
     def __getitem__(self, idx):

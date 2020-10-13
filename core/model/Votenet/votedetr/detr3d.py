@@ -42,7 +42,11 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         self.class_embed = nn.Linear(hidden_dim, class_output_shape)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, bbox_output_shape, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
-        self.pos_embd = build_position_encoding(config_transformer.position_embedding, hidden_dim, config_transformer.input_dim)
+        self.pos_embd_type = config_transformer.position_embedding
+        if self.pos_embd_type == 'self':
+            self.pos_embd = None
+        else:
+            self.pos_embd = build_position_encoding(config_transformer.position_embedding, hidden_dim, config_transformer.input_dim)
         self.aux_loss = aux_loss
 
     def forward(self, xyz, features, output):  # insert into output
@@ -64,8 +68,16 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         _, _, C = features.shape
         mask = torch.zeros(B, N).bool().to(xyz.device)
         # print(mask, ' <<< mask')
-        pos_embd = self.pos_embd(xyz)
-        hs = self.transformer(self.input_proj(features), mask, self.query_embed.weight, pos_embd)[0]
+        if self.pos_embd_type == 'self':
+            pos_embd = self.input_proj(features)
+        else:
+            pos_embd = self.pos_embd(xyz)
+        # print(xyz, features, '<< before transformer; features not right')
+        features = self.input_proj(features)
+        # print(features.shape, features.mean(), features.std(), '<< features std and mean')
+        hs = self.transformer(features, mask, self.query_embed.weight, pos_embd)[0]
+        
+        # print(hs,'<<after transformer', flush=True) # TODO CHECK IT
         # return: dec_layer * B * Query * C
         outputs_class = self.class_embed(hs)
         outputs_coord = self.bbox_embed(hs)

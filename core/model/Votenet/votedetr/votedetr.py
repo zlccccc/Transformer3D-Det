@@ -18,10 +18,9 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 MODEL_DIR = os.path.join(ROOT_DIR, 'models')
 sys.path.append(MODEL_DIR)
 sys.path.append(BASE_DIR)
-print('\n'.join(sys.path))
+# print('\n'.join(sys.path))
 from backbone_module import Pointnet2Backbone
 from voting_module import VotingModule
-from proposal_votenet import ProposalModule
 from dump_helper import dump_results
 
 
@@ -70,8 +69,21 @@ class VoteDetr(nn.Module):
         self.vgen3 = VotingModule(self.vote_factor, 256)
 
         # Vote aggregation and detection
-        self.pnet = ProposalModule(num_class, num_heading_bin, num_size_cluster,
-                                   mean_size_arr, num_proposal, sampling, config_transformer=config_transformer)
+        print(self.sampling, '<< sampling')
+        if self.sampling in ('vote_fps', 'seed_fps'):
+            from proposal_votenet import ProposalModule
+            self.pnet = ProposalModule(num_class, num_heading_bin, num_size_cluster,
+                                       mean_size_arr, num_proposal, sampling, config_transformer=config_transformer)
+        elif self.sampling in ('no_vote'):
+            from proposal_pointnet import ProposalModule
+            self.pnet = ProposalModule(num_class, num_heading_bin, num_size_cluster,
+                                       mean_size_arr, num_proposal, config_transformer=config_transformer)
+        elif self.sampling in ('bbox_directly'):
+            from proposal_pointnet_bbox import ProposalModule
+            self.pnet = ProposalModule(num_class, num_heading_bin, num_size_cluster,
+                                       mean_size_arr, num_proposal, config_transformer=config_transformer)
+        else:
+            raise NotImplementedError(sampling)
 
     def forward(self, inputs):
         """ Forward pass of the network
@@ -114,6 +126,15 @@ class VoteDetr(nn.Module):
         end_points['vote_features'] = features
 
         seed_xyz = end_points['seed_xyz']  # initial
-        end_points = self.pnet(seed_xyz, xyz, features, end_points)  # for feature
+        if self.sampling in ('vote_fps', 'seed_fps'):
+            end_points = self.pnet(seed_xyz, xyz, features, end_points)  # for feature
+        elif self.sampling in ('no_vote'):
+            end_points = self.pnet(seed_xyz, features, end_points)  # for feature
+        elif self.sampling in ('bbox_directly'):
+            end_points['point_clouds'] = inputs['point_clouds']  # for normalization
+            end_points = self.pnet(seed_xyz, features, end_points)  # for feature
+            del end_points['point_clouds']
+        else:
+            raise NotImplementedError(self.sampling)
 
         return end_points

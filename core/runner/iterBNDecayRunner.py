@@ -65,12 +65,15 @@ def iterBNDecayRunner(info):
     loggers = info['loggers']
     lowest_error = info['lowest_error']
     last_iter = info['last_iter']
+    clip_grad_norm = config.get('clip_grad_norm', None)
+    if clip_grad_norm is not None:
+        print('CLIP GRAD NORM! MAX =', clip_grad_norm)
     # BN_MOMEMTUM
     # BN_DECAY_STEP = FLAGS.bn_decay_step
     # BN_DECAY_RATE = FLAGS.bn_decay_rate
-    BN_DECAY_STEP = 3000  #20*150
+    BN_DECAY_STEP = 1000  #20*150
     BN_DECAY_RATE = 0.5
-    BN_MOMENTUM_INIT = 0.5
+    BN_MOMENTUM_INIT = 0.1
     BN_MOMENTUM_MAX = 0.001
     bn_lbmd = lambda it: max(BN_MOMENTUM_INIT * BN_DECAY_RATE**(int(it / BN_DECAY_STEP)), BN_MOMENTUM_MAX)
     bnm_scheduler = BNMomentumScheduler(model, bn_lambda=bn_lbmd, last_epoch=last_iter)
@@ -114,6 +117,10 @@ def iterBNDecayRunner(info):
         assert 'loss' in output.keys(), 'Key "loss" should in output.keys'
         loss = output['loss']
         # print(loss)
+        if clip_grad_norm is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad_norm)
+            # print('clip_max_norm', flush=True)
+            pass
         loss.backward()
         # model.average_gradients()  # multi card sync
         # print_grad(model, 'weight')

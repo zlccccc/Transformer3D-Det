@@ -16,7 +16,7 @@ class PositionEmbeddingSine3D(nn.Module):
     """
     def __init__(self, num_pos_feats=64, temperature=10000, scale=None):
         super().__init__()
-        self.num_pos_feats = num_pos_feats - 1  # concat with input dim
+        self.num_pos_feats = num_pos_feats - 1  # TODO concat with input dim
         self.temperature = temperature
         if scale is None:
             scale = 2 * math.pi
@@ -40,6 +40,7 @@ class PositionEmbeddingSine3D(nn.Module):
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
         pos_dim = [xyz]
+        # pos_dim = []
         for i in range(C):
             # print(xyz[:, :, i, None].shape, dim_t.shape)
             pos_dim.append(xyz[:, :, i, None].repeat(1, 1, self.num_pos_feats) / dim_t)

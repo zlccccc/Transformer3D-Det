@@ -23,7 +23,8 @@ train:
     workers: 8
     dataset:
         name: Scannetv2
-        split_set: train
+        # split_set: train
+        split_set: val
         # data_path: C:\Users\ZLC\Desktop\pycodes\data\scannet_train_detection_data
         data_path: /data1/zhaolichen/data/scannet_train_detection_data
         augment: True

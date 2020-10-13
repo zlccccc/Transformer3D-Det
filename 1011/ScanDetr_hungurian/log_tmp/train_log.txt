@@ -1,0 +1,105 @@
+[2020-10-08 22:10:05,639][ base_logger.py][line:  20][INFO] args_out:Namespace(config='config.yaml', gpu='7', opt='None', recover=False, save=False, test=True)
+[2020-10-08 22:10:05,639][ base_logger.py][line:  20][INFO] config_out:{'common': {'model': {'name': 'votenet', 'task_type': 'Scannetv2', 'net_type': 'detr', 'loss_type': 'matching', 'num_target': 256, 'num_input_channel': 0, 'vote_factor': 1, 'cluster_sampling': 'vote_fps', 'transformer': {'position_embedding': 'sine', 'enc_layers': 6, 'dec_layers': 6, 'dim_feedforward': 2048, 'hidden_dim': 288, 'input_dim': 6, 'dropout': 0.1, 'nheads': 8, 'num_queries': 50, 'pre_norm': True}}, 'logs': {'base_logger': {'path': 'log/log.txt'}, 'tensorboard_logger': {'path': 'log'}}, 'snapshot': {'save_path': 'snapshot'}, 'load': {'load': True, 'path': './ckpt_best_model.pth.tar', 'type': 'recover'}}, 'train': {'batch_size': 8, 'workers': 8, 'dataset': {'name': 'Scannetv2', 'split_set': 'train', 'data_path': '/data1/zhaolichen/data/scannet_train_detection_data', 'augment': True}, 'optimizer': {'name': 'Adam', 'betas': [0.9, 0.999], 'eps': 1e-08, 'weight_decay': 0}, 'lr_scheduler': {'type': 'STEP', 'milestones': [15000, 23000, 30000], 'lr_mults': [0.1, 0.1, 0.1], 'base_lr': 0.01, 'warmup_lr': 0.0001, 'warmup_steps': 0}, 'transform': 'None', 'runner': {'name': 'test', 'max_iter': 35000, 'test_freq': 100, 'save_freq': 16000, 'log_freq': 10, 'snapshot_save_path': 'snapshot'}}, 'test': {'batch_size': 4, 'workers': 4, 'dataset': {'valset': {'name': 'Scannetv2', 'split_set': 'val', 'data_path': '/data1/zhaolichen/data/scannet_train_detection_data'}}}}
+[2020-10-08 22:10:05,639][ base_logger.py][line: 160][INFO] loss
+===============    use args --test    ===============
+{'base_logger': {'path': 'log/log.txt'}, 'tensorboard_logger': {'path': 'log'}}
+relatively import base_logger from core.other.logs.loggers
+create_logger:  log/log.txt
+relatively import tensorboard_logger from core.other.logs.loggers
+support dataset dict_keys(['Test3DDataset', 'ModelNetDataset', 'ModelNetFeatureDataset', '3DSSGDataset', 'ShapeNetDataset', 'Semantic3DDataset', 'SemanticKITTIDataset', 'SemanticKITTIAUGDataset', 'Scannetv2'])
+trying to find dataset {'split_set': 'train', 'data_path': '/data1/zhaolichen/data/scannet_train_detection_data', 'augment': True}
+Try to import_module ScannetDetectionDataset from path core.data.dataset.Detection3D.scannet.scannet_detection_dataset
+Load model path success!
+Scannet Dataset: load data from /data1/zhaolichen/data/scannet_train_detection_data
+kept 1201 scans out of 1201
+support dataset dict_keys(['Test3DDataset', 'ModelNetDataset', 'ModelNetFeatureDataset', '3DSSGDataset', 'ShapeNetDataset', 'Semantic3DDataset', 'SemanticKITTIDataset', 'SemanticKITTIAUGDataset', 'Scannetv2'])
+trying to find dataset {'split_set': 'val', 'data_path': '/data1/zhaolichen/data/scannet_train_detection_data'}
+Try to import_module ScannetDetectionDataset from path core.data.dataset.Detection3D.scannet.scannet_detection_dataset
+Load model path success!
+Scannet Dataset: load data from /data1/zhaolichen/data/scannet_train_detection_data
+kept 312 scans out of 312
+/data1/zhaolichen/my_expeirments/zlc_3D_training_codes/core/model/__init__.py ['/data1/zhaolichen/my_expeirments/zlc_3D_training_codes/core/model'] <<< file and path
+try loading:  module 'core.model.task_basemodel' has no attribute 'model_entry'
+try loading from model package Bow_model:  dict_keys(['BowModel'])
+try loading from model package Votenet:  dict_keys(['votenet'])
+get config from Votenet MyImpilement
+module config: dict_keys(['task_type', 'net_type', 'loss_type', 'num_target', 'num_input_channel', 'vote_factor', 'cluster_sampling', 'transformer'])
+try to import_module votenet core.model.Votenet.votenet
+{'position_embedding': 'sine', 'enc_layers': 6, 'dec_layers': 6, 'dim_feedforward': 2048, 'hidden_dim': 288, 'input_dim': 6, 'dropout': 0.1, 'nheads': 8, 'num_queries': 50, 'pre_norm': True} << config transformer 
+init model params using kaiming_normal
+initialize not impl <class 'backbone_module.Pointnet2Backbone'>
+initialize not impl <class 'pointnet2_modules.PointnetSAModuleVotes'>
+initialize not impl <class 'pointnet2_utils.QueryAndGroup'>
+initialize not impl <class 'torch.nn.modules.activation.ReLU'>
+initialize not impl <class 'pointnet2_modules.PointnetSAModuleVotes'>
+initialize not impl <class 'pointnet2_utils.QueryAndGroup'>
+initialize not impl <class 'pointnet2_modules.PointnetSAModuleVotes'>
+initialize not impl <class 'pointnet2_utils.QueryAndGroup'>
+initialize not impl <class 'pointnet2_modules.PointnetSAModuleVotes'>
+initialize not impl <class 'pointnet2_utils.QueryAndGroup'>
+initialize not impl <class 'pointnet2_modules.PointnetFPModule'>
+initialize not impl <class 'pointnet2_modules.PointnetFPModule'>
+initialize not impl <class 'voting_module.VotingModule'>
+initialize not impl <class 'voting_module.VotingModule'>
+initialize not impl <class 'voting_module.VotingModule'>
+initialize not impl <class 'proposal_votenet.ProposalModule'>
+initialize not impl <class 'pointnet2_modules.PointnetSAModuleVotes'>
+initialize not impl <class 'pointnet2_utils.QueryAndGroup'>
+initialize not impl <class 'detr3d.DETR3D'>
+initialize not impl <class 'transformer3D.Transformer3D'>
+initialize not impl <class 'transformer3D.TransformerEncoder'>
+initialize not impl <class 'transformer3D.TransformerEncoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerEncoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerEncoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerEncoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerEncoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerEncoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerDecoder'>
+initialize not impl <class 'transformer3D.TransformerDecoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerDecoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerDecoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerDecoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerDecoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'transformer3D.TransformerDecoderLayer'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'torch.nn.modules.activation.MultiheadAttention'>
+initialize not impl <class 'detr3d.MLP'>
+initialize not impl <class 'torch.nn.modules.sparse.Embedding'>
+initialize not impl <class 'position_encoding.PositionEmbeddingSine3D'>
+Using Cuda!
+using optimizer Adam
+{'betas': [0.9, 0.999], 'eps': 1e-08, 'weight_decay': 0, 'lr': 0.01}
+load model from ./ckpt_best_model.pth.tar
+Resume training from a previous checkpoint ...
+=> loading checkpoint './ckpt_best_model.pth.tar'
+missing  0  keys with  371 in total
+=> also loaded optimizer from checkpoint './ckpt_best_model.pth.tar' (step 100)
+build dataset train shape 1201
+build dataset valset shape 312
+change optimizer to gpu state
+using runner test
+use cuda(gpu)
+---- Initialize error calculation ----
+[2020-10-08 22:10:27,584][ base_logger.py][line:  20][INFO] testset_name_out:valset
+[2020-10-08 22:10:27,586][ base_logger.py][line: 160][INFO] error Iter: [33m1/78[0m([31mepoch0.01[0m) {[93merror:[94m0.000[0m(mean=[96m0.000[0m)[0m[all_error:[94m39.192[0m(mean=[96m39.192[0m)|box_error:[94m35.941[0m(mean=[96m35.941[0m)|center_dist_error:[94m32.709[0m(mean=[96m32.709[0m)|cls_error:[94m2.525[0m(mean=[96m2.525[0m)|heading_class_error:[94m0.000[0m(mean=[96m0.000[0m)|heading_residual_error:[94m0.011[0m(mean=[96m0.011[0m)|obj_error:[94m0.265[0m(mean=[96m0.265[0m)|size_class_error:[94m0.240[0m(mean=[96m0.240[0m)|size_residual_error:[94m0.190[0m(mean=[96m0.190[0m)|vote_error:[94m16.255[0m(mean=[96m16.255[0m)|vote_error_stage_1:[94m3.251[0m(mean=[96m3.251[0m)]}
+[2020-10-08 22:10:32,568][ base_logger.py][line: 160][INFO] error Iter: [33m11/78[0m([31mepoch0.14[0m) {[93merror:[94m0.000[0m(mean=[96m0.000[0m)[0m[all_error:[94m29.515[0m(mean=[96m27.577[0m)|box_error:[94m24.472[0m(mean=[96m22.958[0m)|center_dist_error:[94m21.577[0m(mean=[96m19.865[0m)|cls_error:[94m2.260[0m(mean=[96m2.413[0m)|heading_class_error:[94m0.000[0m(mean=[96m0.000[0m)|heading_residual_error:[94m0.008[0m(mean=[96m0.007[0m)|obj_error:[94m0.260[0m(mean=[96m0.263[0m)|size_class_error:[94m0.216[0m(mean=[96m0.236[0m)|size_residual_error:[94m0.151[0m(mean=[96m0.174[0m)|vote_error:[94m25.216[0m(mean=[96m23.092[0m)|vote_error_stage_1:[94m5.043[0m(mean=[96m4.618[0m)]}
+[2020-10-08 22:10:36,985][ base_logger.py][line: 160][INFO] error Iter: [33m21/78[0m([31mepoch0.27[0m) {[93merror:[94m0.000[0m(mean=[96m0.000[0m)[0m[all_error:[94m45.382[0m(mean=[96m27.273[0m)|box_error:[94m40.091[0m(mean=[96m22.567[0m)|center_dist_error:[94m36.783[0m(mean=[96m19.357[0m)|cls_error:[94m2.604[0m(mean=[96m2.480[0m)|heading_class_error:[94m0.000[0m(mean=[96m0.000[0m)|heading_residual_error:[94m0.008[0m(mean=[96m0.007[0m)|obj_error:[94m0.261[0m(mean=[96m0.263[0m)|size_class_error:[94m0.240[0m(mean=[96m0.236[0m)|size_residual_error:[94m0.194[0m(mean=[96m0.223[0m)|vote_error:[94m26.459[0m(mean=[96m23.531[0m)|vote_error_stage_1:[94m5.292[0m(mean=[96m4.706[0m)]}
+[2020-10-08 22:10:42,306][ base_logger.py][line: 160][INFO] error Iter: [33m31/78[0m([31mepoch0.40[0m) {[93merror:[94m0.000[0m(mean=[96m0.000[0m)[0m[all_error:[94m27.679[0m(mean=[96m28.092[0m)|box_error:[94m24.048[0m(mean=[96m23.421[0m)|center_dist_error:[94m20.519[0m(mean=[96m20.190[0m)|cls_error:[94m2.887[0m(mean=[96m2.517[0m)|heading_class_error:[94m0.000[0m(mean=[96m0.000[0m)|heading_residual_error:[94m0.007[0m(mean=[96m0.007[0m)|obj_error:[94m0.265[0m(mean=[96m0.263[0m)|size_class_error:[94m0.264[0m(mean=[96m0.236[0m)|size_residual_error:[94m0.105[0m(mean=[96m0.208[0m)|vote_error:[94m18.158[0m(mean=[96m23.353[0m)|vote_error_stage_1:[94m3.632[0m(mean=[96m4.671[0m)]}
+[2020-10-08 22:10:46,597][ base_logger.py][line: 160][INFO] error Iter: [33m41/78[0m([31mepoch0.53[0m) {[93merror:[94m0.000[0m(mean=[96m0.000[0m)[0m[all_error:[94m45.514[0m(mean=[96m27.841[0m)|box_error:[94m41.692[0m(mean=[96m23.154[0m)|center_dist_error:[94m38.286[0m(mean=[96m19.912[0m)|cls_error:[94m2.752[0m(mean=[96m2.536[0m)|heading_class_error:[94m0.000[0m(mean=[96m0.000[0m)|heading_residual_error:[94m0.005[0m(mean=[96m0.007[0m)|obj_error:[94m0.265[0m(mean=[96m0.263[0m)|size_class_error:[94m0.276[0m(mean=[96m0.238[0m)|size_residual_error:[94m0.107[0m(mean=[96m0.198[0m)|vote_error:[94m19.109[0m(mean=[96m23.435[0m)|vote_error_stage_1:[94m3.822[0m(mean=[96m4.687[0m)]}
+[2020-10-08 22:10:51,730][ base_logger.py][line: 160][INFO] error Iter: [33m51/78[0m([31mepoch0.65[0m) {[93merror:[94m0.000[0m(mean=[96m0.000[0m)[0m[all_error:[94m21.864[0m(mean=[96m27.723[0m)|box_error:[94m17.588[0m(mean=[96m23.139[0m)|center_dist_error:[94m14.346[0m(mean=[96m19.882[0m)|cls_error:[94m2.575[0m(mean=[96m2.551[0m)|heading_class_error:[94m0.000[0m(mean=[96m0.000[0m)|heading_residual_error:[94m0.007[0m(mean=[96m0.007[0m)|obj_error:[94m0.259[0m(mean=[96m0.263[0m)|size_class_error:[94m0.241[0m(mean=[96m0.240[0m)|size_residual_error:[94m0.160[0m(mean=[96m0.196[0m)|vote_error:[94m21.380[0m(mean=[96m22.921[0m)|vote_error_stage_1:[94m4.276[0m(mean=[96m4.584[0m)]}

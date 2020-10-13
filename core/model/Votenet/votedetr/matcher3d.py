@@ -6,8 +6,6 @@ import torch
 from scipy.optimize import linear_sum_assignment
 from torch import nn
 
-from util.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
-
 
 class HungarianMatcher(nn.Module):
     """This class computes an assignment between the targets and the predictions of the network
@@ -28,11 +26,11 @@ class HungarianMatcher(nn.Module):
         super().__init__()
         self.cost_weight_dict = cost_weight_dict
         for key, value in cost_weight_dict.items():
-            assert isinstance(value, float), 'cost should be a float value'
+            assert isinstance(value, (int, float)), 'cost should be a float value'
             assert value >= 0, 'cost weight should be a positive value'
 
     @torch.no_grad()
-    def forward(self, cost_dict: dict, sizes):
+    def forward(self, cost_dict: dict):
         """ Performs the matching
 
         Params:
@@ -56,15 +54,19 @@ class HungarianMatcher(nn.Module):
         # i think minimize(loss) just is also okay
 
         C = None  # Final cost matrix
-        for key, value in cost_dict.keys():
+        for key, batch_value in cost_dict.items():
             assert key in self.cost_weight_dict.keys(), 'cost_dict should have weight'
-            value = value * self.cost_weight_dict[key]
-            C = value if C is None else C + value
-        Q, N_OBJ = C.shape
+            real_value = [value * self.cost_weight_dict[key] for value in batch_value]
+            if C is None:
+                C = real_value
+            else:
+                for i, val in enumerate(real_value):
+                    C[i] = C[i] + val
         # sizes = [len(v["boxes"]) for v in targets]  # size of gt boxes
-        indices = [linear_sum_assignment(c[i]) for i, c in enumerate(C.split(sizes, -1))]
-        return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices]
+        indices = [linear_sum_assignment(c.cpu()) for i, c in enumerate(C)]
+        # print(indices)
+        return [(torch.as_tensor(i, dtype=torch.int64), torch.as_tensor(j, dtype=torch.int64)) for i, j in indices], C
 
 
 def build_matcher(args):
-    return HungarianMatcher(cost_class=args.set_cost_class, cost_bbox=args.set_cost_bbox, cost_giou=args.set_cost_giou)
+    return HungarianMatcher(args)

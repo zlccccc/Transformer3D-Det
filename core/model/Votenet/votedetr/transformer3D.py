@@ -18,7 +18,7 @@ from torch import nn, Tensor
 class Transformer3D(nn.Module):
 
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
-                 num_decoder_layers=6, dim_feedforward=2048, dropout=0.1,
+                 num_decoder_layers=6, dim_feedforward=2048, dropout=0,
                  activation="relu", normalize_before=False,
                  return_intermediate_dec=False):
         super().__init__()
@@ -52,14 +52,20 @@ class Transformer3D(nn.Module):
         pos_embed = pos_embed.permute(1, 0, 2)
         query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
         mask = mask.flatten(1)
+        # mask = None
+        # print(mask)
         # print(src.shape, pos_embed.shape, query_embed.shape, mask.shape, '<<< src and post shape')
+        # print(src, pos_embed[0], '<<< src and post shape')
+        # print(src)
+        # print(src.mean(), src.std(), '<< transformer input std value features mean and std', flush=True)
 
         tgt = torch.zeros_like(query_embed)
         memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
         # print('encoder done ???')
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
-        # print(hs.transpose(1,2).shape, memory.shape, '<< encoder and decode shape')
+        # print(hs.transpose(1,2).shape, memory.shape, '<< final encoder and decode shape')
+        # print(memory, '<< memory')
         return hs.transpose(1, 2), memory.permute(1, 0, 2)  # .view(B, N, C)
 
 
@@ -80,6 +86,7 @@ class TransformerEncoder(nn.Module):
         for layer in self.layers:
             output = layer(output, src_mask=mask,
                            src_key_padding_mask=src_key_padding_mask, pos=pos)
+            # print(output, '<< ENCODER output layer??')
 
         if self.norm is not None:
             output = self.norm(output)
@@ -159,6 +166,9 @@ class TransformerEncoderLayer(nn.Module):
         # print(q.shape, src.shape, src_key_padding_mask.shape, '<< forward post shape')
         src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
                               key_padding_mask=src_key_padding_mask)[0]
+        # print(q, k, '<< forward!!')
+        # print(src2, '<< forward')
+        # exit()
         src = src + self.dropout1(src2)
         src = self.norm1(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))

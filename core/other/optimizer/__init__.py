@@ -10,5 +10,7 @@ def get_optimizer(config, parameters):
         return optim.Adam(params=parameters, **config)
     elif name == 'SGD':
         return optim.SGD(params=parameters, **config)
+    elif name == "AdamW":
+        return optim.AdamW(params=parameters, **config)
     else:
         raise NotImplementedError(name)

@@ -55,7 +55,8 @@ def compute_vote_loss(end_points, vote_xyz):
     seed_gt_votes_mask = torch.gather(end_points['vote_label_mask'], 1, seed_inds)
     seed_inds_expand = seed_inds.view(batch_size,num_seed,1).repeat(1,1,3*GT_VOTE_FACTOR)
     seed_gt_votes = torch.gather(end_points['vote_label'], 1, seed_inds_expand)
-    seed_gt_votes += end_points['seed_xyz'].repeat(1,1,3)
+    # seed_gt_votes += end_points['seed_xyz'].repeat(1,1,3)
+    seed_gt_votes = end_points['seed_xyz'].repeat(1,1,3)  # NOT VOTE
 
     # Compute the min of min of distance
     vote_xyz_reshape = vote_xyz.view(batch_size*num_seed, -1, 3) # from B,num_seed*vote_factor,3 to B*num_seed,vote_factor,3
@@ -254,12 +255,12 @@ def get_loss(end_points, config):
     end_points['size_cls_loss'] = size_cls_loss
     end_points['size_reg_loss'] = size_reg_loss
     end_points['sem_cls_loss'] = sem_cls_loss
-    box_loss = center_loss + 0.1*heading_cls_loss + heading_reg_loss + 0.1*size_cls_loss + size_reg_loss
+    box_loss = 50*center_loss + 0.1*heading_cls_loss + heading_reg_loss + 0.1*size_cls_loss + size_reg_loss
     end_points['box_loss'] = box_loss
 
     # Final loss function
-    loss = vote_loss + 0.5*objectness_loss + box_loss + 0.1*sem_cls_loss
-    loss *= 10
+    loss = vote_loss + objectness_loss + box_loss + sem_cls_loss
+    # loss = vote_loss + 0.5*objectness_loss + box_loss + 0.1*sem_cls_loss
     end_points['loss'] = loss
 
     # --------------------------------------------

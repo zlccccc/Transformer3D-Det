@@ -9,6 +9,7 @@ def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # la
         return 0., 0
     # must be val_mode
     all_error, n_count = 0., 0
+    # model = model.train()
     if hasattr(model, 'initialize_error'):
         model.initialize_error()
     for it, sample in enumerate(loader):

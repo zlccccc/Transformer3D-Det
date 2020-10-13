@@ -2,6 +2,7 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,6 +24,7 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     # TODO CHANGE OUTPUT_DICT
     pred_logits = output_dict['pred_logits']
     pred_boxes = output_dict['pred_boxes']
+    # print(pred_boxes, flush=True) # <<< ??? pred box outputs
     # print(pred_logits.shape, pred_boxes.shape, '<< decode shape score')
 
     batch_size = pred_boxes.shape[0]
@@ -30,7 +32,7 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
 
     objectness_scores = pred_logits[:,:,0:2]  # TODO CHANGE IT; JUST SOFTMAX
     end_points['objectness_scores'] = objectness_scores
-    sem_cls_scores = pred_boxes[:,:,2:2+num_class] # Bxnum_proposalx10
+    sem_cls_scores = pred_logits[:,:,2:2+num_class] # Bxnum_proposalx10
     end_points['sem_cls_scores'] = sem_cls_scores
 
     center = pred_boxes[:,:,0:3] # (batch_size, num_proposal, 3) TODO RESIDUAL
@@ -44,6 +46,9 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
 
     size_scores = pred_boxes[:,:,3+num_heading_bin*2:3+num_heading_bin*2+num_size_cluster]
     size_residuals_normalized = pred_boxes[:,:,3+num_heading_bin*2+num_size_cluster:3+num_heading_bin*2+num_size_cluster*4].view([batch_size, num_proposal, num_size_cluster, 3]) # Bxnum_proposalxnum_size_clusterx3 TODO REMOVE BBOX-SIZE-DEFINED
+    # size_residuals_normalized = size_residuals_normalized.sigmoid() * 2 - 1
+    size_residuals_normalized = size_residuals_normalized.atan() / math.pi  # -0.5 to 0.5
+    # print('size normalized value max and min', size_residuals_normalized.max(), size_residuals_normalized.min(), size_residuals_normalized.std(), flush=True)
     end_points['size_scores'] = size_scores
     end_points['size_residuals_normalized'] = size_residuals_normalized
     mean_size = torch.from_numpy(mean_size_arr.astype(np.float32)).type_as(pred_boxes).unsqueeze(0).unsqueeze(0)
@@ -102,6 +107,7 @@ class ProposalModule(nn.Module):
         elif self.sampling == 'seed_fps':  # regard initial_xyz as seed
             # FPS on seed and choose the votes corresponding to the seeds
             # This gets us a slightly better coverage of *object* votes than vote_fps (which tends to get more cluster votes)
+            # print('shape', self.num_proposal, initial_xyz.shape)
             sample_inds = pointnet2_utils.furthest_point_sample(initial_xyz, self.num_proposal)
             xyz, features, _ = self.vote_aggregation(xyz, features, sample_inds)
         elif self.sampling == 'random':
@@ -116,17 +122,21 @@ class ProposalModule(nn.Module):
         end_points['aggregated_vote_inds'] = sample_inds  # (batch_size, num_proposal,) # should be 0,1,2,...,num_proposal
 
         # --------- PROPOSAL GENERATION ----------  TODO PROPOSAL GENERATION AND CHANGE LOSS GENERATION
+        # print(features.mean(), features.std(), ' << first,votenet forward features mean and std', flush=True) # TODO CHECK IT
         features = F.relu(self.bn1(self.conv1(features)))
         features = F.relu(self.bn2(self.conv2(features)))
         # features = self.conv3(features)  # (batch_size, 2+3+num_heading_bin*2+num_size_cluster*4, num_proposal)
+        # print(features.mean(), features.std(), ' << votenet forward features mean and std', flush=True) # TODO CHECK IT
 
         # end_points = decode_scores(features, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
 
-        _xyz = torch.gather(initial_xyz, 1, sample_inds.long().unsqueeze(-1).repeat(1,1,3))
+        # _xyz = torch.gather(initial_xyz, 1, sample_inds.long().unsqueeze(-1).repeat(1,1,3))
         # print(initial_xyz.shape, xyz.shape, sample_inds.shape, _xyz.shape, '<< sample xyz shape', flush=True)
         features = features.permute(0, 2, 1)
         # print(xyz.shape, features.shape, '<< detr input feature dim')
-        output_dict = self.detr(torch.cat([xyz, _xyz], dim=-1), features, end_points)
+        # output_dict = self.detr(torch.cat([xyz, _xyz], dim=-1), features, end_points)
+        output_dict = self.detr(xyz, features, end_points)
+        # print('??  output dict done')
         end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
 
         return end_points
