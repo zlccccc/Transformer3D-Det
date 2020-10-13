@@ -18,7 +18,7 @@ common:
             dropout: 0
             # dropout: 0.1
             nheads: 8
-            num_queries: 40
+            num_queries: 10
             pre_norm: False
     logs:
         base_logger:

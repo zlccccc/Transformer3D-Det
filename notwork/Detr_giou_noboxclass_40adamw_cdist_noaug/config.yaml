@@ -9,16 +9,16 @@ common:
         vote_factor: 1
         cluster_sampling: bbox_directly
         transformer:  # just for transformer
-            position_embedding: sine
+            position_embedding: self
             input_dim: 3
-            enc_layers: 2
-            dec_layers: 2
+            enc_layers: 6
+            dec_layers: 6
             dim_feedforward: 512
             hidden_dim: 288
             dropout: 0
             # dropout: 0.1
             nheads: 8
-            num_queries: 40
+            num_queries: 20
             pre_norm: False
     logs:
         base_logger:
@@ -39,7 +39,7 @@ train:
         split_set: train
         # data_path: C:\Users\ZLC\Desktop\pycodes\data\scannet_train_detection_data
         data_path: /data1/zhaolichen/data/scannet_train_detection_data
-        augment: True
+        augment: False
         # use_color: True
         # use_height: True  # use it as feature
     optimizer:

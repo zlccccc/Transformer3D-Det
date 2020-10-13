@@ -13,7 +13,7 @@ common:
             input_dim: 3
             enc_layers: 2
             dec_layers: 2
-            dim_feedforward: 512
+            dim_feedforward: 2048
             hidden_dim: 288
             dropout: 0
             # dropout: 0.1

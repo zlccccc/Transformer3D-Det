@@ -13,12 +13,12 @@ common:
             input_dim: 3
             enc_layers: 2
             dec_layers: 2
-            dim_feedforward: 256
+            dim_feedforward: 512
             hidden_dim: 288
             dropout: 0
             # dropout: 0.1
             nheads: 8
-            num_queries: 40
+            num_queries: 20
             pre_norm: False
     logs:
         base_logger:
