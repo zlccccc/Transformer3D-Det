@@ -68,7 +68,7 @@ def compute_vote_loss(end_points, vote_xyz):
 
 
 def compute_cascade_vote_loss(end_points):
-    vote_stage = end_points['vote_stage']
+    vote_stage = end_points.get('vote_stage', 0)
     vote_loss = torch.zeros(1).cuda()
     if vote_stage >= 1:
         end_points['vote_loss_stage_1'] = compute_vote_loss(end_points, end_points['vote_xyz_stage_1'])
@@ -79,7 +79,8 @@ def compute_cascade_vote_loss(end_points):
     if vote_stage >= 3:
         end_points['vote_loss_stage_3'] = compute_vote_loss(end_points, end_points['vote_xyz_stage_3'])
         vote_loss += end_points['vote_loss_stage_3']
-    vote_loss /= vote_stage
+    if vote_stage != 0:
+        vote_loss /= vote_stage
     return vote_loss
 
 
@@ -238,6 +239,34 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
     # heading_residual_normalized_loss = huber_loss(torch.sum(end_points['heading_residuals_normalized']*heading_label_one_hot, -1) - heading_residual_normalized_label, delta=1.0)  # (B,K)
     # heading_residual_normalized_loss = torch.sum(heading_residual_normalized_loss*objectness_label)/(torch.sum(objectness_label)+1e-6)
 
+    pred_obj_label = end_points['objectness_scores']
+    gt_sem_cls_label = end_points['sem_cls_label']
+    pred_sem_cls_label = end_points['sem_cls_scores']
+
+    obj_w, cls_w = [], []  # object and class
+    for bs in range(B):
+        # cls weight
+        batch_gt = gt_sem_cls_label[bs, None, box_label_mask[bs]].repeat(MAXQ, 1)
+        GT_COUNT = batch_gt.shape[1]
+        if GT_COUNT == 0:  # append zero
+            obj_w.append(0)
+            cls_w.append(0)
+            continue
+        batch_pred = pred_sem_cls_label[bs, :, None, :].repeat(1, GT_COUNT, 1)
+        criterion = nn.CrossEntropyLoss(reduction='none')
+        batch_class_loss = criterion(batch_pred.reshape(MAXQ*GT_COUNT, num_class), batch_gt.reshape(MAXQ*GT_COUNT))
+        batch_class_loss = batch_class_loss.reshape(MAXQ, GT_COUNT)
+        # print(batch_class_loss.shape, '<< batch_class_loss')
+        cls_w.append(batch_class_loss)
+        # obj weight
+        batch_pred = -pred_obj_label[bs, :, :].softmax(dim=-1)[:, 1]  # use it to match value
+        batch_pred = batch_pred[:, None].repeat(1, GT_COUNT)
+        obj_w.append(batch_pred)
+        # print(batch_pred.shape, pred_obj_label.shape, batch_class_loss.shape, '<< pred and class')
+        # batch_pred = batch_pred.repeat(1, GT_COUNT, 1)
+    metric['obj_weight_choose(loss)'] = obj_w
+    metric['cls_loss'] = cls_w
+
     global matcher
     if matcher is None:
         matcher = build_matcher(config_matcher)
@@ -245,42 +274,39 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
     # print(indices, [c.shape for c in cost_matrices], 'cost matrices shape')
     loss = 0
     for key, batch_value in metric.items():
-        assert key in loss_weight_dict.keys(), 'cost_dict should have weight'
-        real_value = [value * loss_weight_dict[key] for value in batch_value]
+        # assert key in loss_weight_dict.keys(), 'cost_dict should have weight'
+        # real_value = [value * loss_weight_dict[key] for value in batch_value]
         batch_loss = 0
-        for i, val in enumerate(real_value):
+        for i, val in enumerate(batch_value):
             if len(indices[i][0]) == 0:  # length maybe zero
                 continue
             val_loss = val[indices[i]]
             batch_loss += val_loss.mean()
         batch_loss /= B
         end_points[key] = batch_loss
-        loss += batch_loss
+        if key in loss_weight_dict.keys():
+            loss += batch_loss * loss_weight_dict[key]
+            end_points[key] = batch_loss * loss_weight_dict[key]
+        else:
+            pass
+
+    batch_metric = 0
+    for i, val in enumerate(cost_matrices):
+        if len(indices[i][0]) == 0:  # length maybe zero
+            continue
+        val_metric = val[indices[i]]
+        batch_metric += val_metric.mean()
+    batch_metric /= B
+    end_points['matching_metric(loss)'] = batch_metric
 
     # 3.4 Semantic cls loss; LATER
     # Compute center loss (already changed)
-    pred_sem_cls_label = end_points['sem_cls_scores']
     pred_obj_label = end_points['objectness_scores']
-    gt_sem_cls_label = end_points['sem_cls_label']
     # print(gt_sem_cls_label.shape, pred_sem_cls_label.shape, '<<< sem cls label shape')
     # print(gt_sem_cls_label)
-    cls_loss, obj_loss = 0, 0
+    obj_loss = 0
     for bs in range(B):
         ind_qry, ind_obj = indices[bs]
-        batch_class_gt = gt_sem_cls_label[bs, box_label_mask[bs]]
-        batch_class_pred = pred_sem_cls_label[bs, :, :]
-        # print(batch_class_pred.shape, batch_class_gt.shape, ind_qry, ind_obj, batch_class_gt, '<< pred,gt batch indice [%d]'%bs)
-        batch_class_gt = batch_class_gt[ind_obj]
-        batch_class_pred = batch_class_pred[ind_qry, :]
-        if len(ind_qry) == 0:
-            # print('WARNING! There is a scan without any object!', flush=True)
-            batch_cls_loss = 0
-        else:
-            criterion = nn.CrossEntropyLoss(reduction='none')
-            batch_cls_loss = criterion(batch_class_pred, batch_class_gt) 
-            batch_cls_loss = batch_cls_loss.mean()
-        # print(batch_class_pred.shape, batch_class_gt.shape, ind_qry, ind_obj, batch_class_gt, batch_cls_loss, '<< pred,gt batch indice [%d]'%bs)
-        # if have object
         batch_obj_pred = pred_obj_label[bs, :, :]
         K, _ = batch_obj_pred.shape
         batch_objectness_label = torch.zeros((K), dtype=torch.long).to(batch_obj_pred.device)
@@ -290,14 +316,11 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
         batch_obj_loss = criterion(batch_obj_pred, batch_objectness_label)
         batch_obj_loss = batch_obj_loss.mean()
 
-        cls_loss += batch_cls_loss
         obj_loss += batch_obj_loss
     # exit()
-    cls_loss = cls_loss / B * loss_weight_dict['cls_loss']
-    obj_loss = obj_loss / B * loss_weight_dict['obj_loss']
-    end_points['cls_loss'] = cls_loss
-    end_points['obj_loss'] = obj_loss
-    loss = loss + cls_loss + obj_loss
+    obj_loss = obj_loss / B
+    end_points['obj_loss'] = obj_loss * loss_weight_dict['obj_loss']
+    loss = loss + obj_loss * loss_weight_dict['obj_loss']
 
     # sem_cls_label = torch.gather(end_points['sem_cls_label'], 1, object_assignment)  # select (B,K) from (B,K2)
     # criterion_sem_cls = nn.CrossEntropyLoss(reduction='none')
@@ -354,11 +377,12 @@ def get_loss(end_points, config):
         'heading_class_loss': 1,
         'heading_residual_loss': 10,
         'size_iou_loss': 10,
-        'size_cdist_loss': 2
+        'size_cdist_loss': 1,
+        'cls_loss': 1,
+        'obj_weight_choose(loss)': 1,
     }
     loss_weight_dict = config_matcher.copy()
-    loss_weight_dict['cls_loss'] = 1  # for obj class (transformer)
-    loss_weight_dict['size_cdist_loss'] = 1  # for obj class (transformer)
+    del loss_weight_dict['obj_weight_choose(loss)']
     loss_weight_dict['obj_loss'] = 5  # for obj if used (transformer)
     bbox_loss, end_points, indices = compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict)
 

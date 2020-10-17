@@ -15,16 +15,10 @@ import os
 # VOTENET AND DETR MODEL CODEBASE PATH
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
-MODEL_DIR = os.path.join(ROOT_DIR, 'models')
-POINT2_DIR = os.path.join(ROOT_DIR, 'pointnet2_python')
-sys.path.append(MODEL_DIR)
 sys.path.append(BASE_DIR)
-sys.path.append(POINT2_DIR)
+MODEL_DIR = os.path.join(ROOT_DIR, 'models')  # use c++ codes; setup install needed
+sys.path.append(MODEL_DIR)
 # print('\n'.join(sys.path))
-from backbone_module import Pointnet2Backbone
-from voting_module import VotingModule
-from dump_helper import dump_results
-from pointnet_cls import get_model
 
 class VoteDetr(nn.Module):
     r"""
@@ -47,7 +41,7 @@ class VoteDetr(nn.Module):
 
     def __init__(self, num_class, num_heading_bin, num_size_cluster, mean_size_arr,
                  input_feature_dim=0, num_proposal=128, vote_factor=1, sampling='vote_fps', vote_stage=1,
-                 config_transformer=None):
+                 config_backbone=None, config_transformer=None):
         super().__init__()
 
         self.num_class = num_class
@@ -63,12 +57,29 @@ class VoteDetr(nn.Module):
         assert vote_stage in [1, 2, 3]
 
         # Backbone point feature learning
-        self.backbone_net = Pointnet2Backbone(input_feature_dim=self.input_feature_dim)
-
-        # Hough voting
-        self.vgen1 = VotingModule(self.vote_factor, 256)
-        self.vgen2 = VotingModule(self.vote_factor, 256)
-        self.vgen3 = VotingModule(self.vote_factor, 256)
+        if config_backbone is None:
+            print('DETR - BACKBONE: using default pointnet backbone! (votenet)')
+            config_backbone = {'name': 'votenet_backbone'}
+        if config_backbone['name'] == 'votenet_backbone':
+            print('detr-backbone: using votenet-backbone (num_pc=1024)')
+            from backbone_module import Pointnet2Backbone
+            from voting_module import VotingModule
+            self.backbone_net = Pointnet2Backbone(input_feature_dim=self.input_feature_dim)
+            # Hough voting
+            self.with_voting = True
+            self.vgen1 = VotingModule(self.vote_factor, 256)
+            self.vgen2 = VotingModule(self.vote_factor, 256)
+            self.vgen3 = VotingModule(self.vote_factor, 256)
+        elif config_backbone['name'] == 'pointnet':
+            print('detr-backbone: using pointnet')
+            POINT2_DIR = os.path.join(ROOT_DIR, 'pointnet2_python')
+            sys.path.append(POINT2_DIR)
+            from dump_helper import dump_results
+            from pointnet_cls import get_model
+            self.backbone_net = get_model(config_backbone)
+            self.with_voting = False
+        else:
+            raise NotImplementedError(config_backbone)
 
         # Vote aggregation and detection
         print(self.sampling, '<< sampling')
@@ -86,6 +97,7 @@ class VoteDetr(nn.Module):
                                        mean_size_arr, num_proposal, config_transformer=config_transformer)
         else:
             raise NotImplementedError(sampling)
+
 
     def forward(self, inputs):
         """ Forward pass of the network
@@ -106,28 +118,34 @@ class VoteDetr(nn.Module):
         # import ipdb; ipdb.set_trace()
         end_points = self.backbone_net(inputs['point_clouds'], end_points)
 
-        # --------- HOUGH VOTING ---------
-        xyz = end_points['fp2_xyz']
-        features = end_points['fp2_features']
-        end_points['seed_inds'] = end_points['fp2_inds']
-        end_points['seed_xyz'] = xyz
-        end_points['seed_features'] = features
+        if self.with_voting:
+            # --------- HOUGH VOTING ---------
+            xyz = end_points['fp2_xyz']
+            features = end_points['fp2_features']
+            end_points['seed_inds'] = end_points['fp2_inds']
+            end_points['seed_xyz'] = xyz
+            end_points['seed_features'] = features
 
-        if self.vote_stage >= 1:
-            xyz, features = self.vgen1(xyz, features)
-            end_points['vote_xyz_stage_1'] = xyz
-        if self.vote_stage >= 2:
-            xyz, features = self.vgen2(xyz, features)
-            end_points['vote_xyz_stage_2'] = xyz
-        if self.vote_stage >= 3:
-            xyz, features = self.vgen3(xyz, features)
-            end_points['vote_xyz_stage_3'] = xyz
+            if self.vote_stage >= 1:
+                xyz, features = self.vgen1(xyz, features)
+                end_points['vote_xyz_stage_1'] = xyz
+            if self.vote_stage >= 2:
+                xyz, features = self.vgen2(xyz, features)
+                end_points['vote_xyz_stage_2'] = xyz
+            if self.vote_stage >= 3:
+                xyz, features = self.vgen3(xyz, features)
+                end_points['vote_xyz_stage_3'] = xyz
 
-        end_points['vote_stage'] = self.vote_stage
-        end_points['vote_xyz'] = xyz
-        end_points['vote_features'] = features
+            end_points['vote_stage'] = self.vote_stage
+            end_points['vote_xyz'] = xyz
+            end_points['vote_features'] = features
 
-        seed_xyz = end_points['seed_xyz']  # initial
+            seed_xyz = end_points['seed_xyz']  # initial
+            xyz = end_points['vote_xyz']
+        else:
+            seed_xyz, features = end_points['seed_xyz'], end_points['seed_features']
+
+        # print(seed_xyz.shape, features.shape, '<<<   detr codes; features dim')
         if self.sampling in ('vote_fps', 'seed_fps'):
             end_points = self.pnet(seed_xyz, xyz, features, end_points)  # for feature
         elif self.sampling in ('no_vote'):

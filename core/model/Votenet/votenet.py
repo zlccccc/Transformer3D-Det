@@ -49,6 +49,7 @@ class votenet(base_module):
                                 input_feature_dim=config.num_input_channel,
                                 vote_factor=config.vote_factor,
                                 sampling=config.cluster_sampling,
+                                config_backbone=config.get('backbone', None),
                                 config_transformer=config.transformer)
             if config.loss_type == 'NMS':
                 from detr_NMS_loss_helper import get_loss

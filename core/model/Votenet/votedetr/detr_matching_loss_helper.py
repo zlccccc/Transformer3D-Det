@@ -259,6 +259,14 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
         batch_loss /= B
         end_points[key] = batch_loss
         loss += batch_loss
+    batch_metric = 0
+    for i, val in enumerate(cost_matrices):
+        if len(indices[i][0]) == 0:  # length maybe zero
+            continue
+        val_metric = val[indices[i]]
+        batch_metric += val_metric.mean()
+    batch_metric /= B
+    end_points['matching_metric(loss)'] = batch_metric
 
     # 3.4 Semantic cls loss; LATER
     # Compute center loss (already changed)
