@@ -18,7 +18,7 @@ sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import pc_util
 from model_util_scannet import rotate_aligned_boxes
-
+import ipdb
 from model_util_scannet import ScannetDatasetConfig
 DC = ScannetDatasetConfig()
 MAX_NUM_OBJ = 64
@@ -29,7 +29,6 @@ class ScannetDetectionDataset(Dataset):
 
     def __init__(self, split_set='train', num_points=20000,
                  use_color=False, use_height=False, augment=False, data_path=None):
-
         self.data_path = os.path.join(BASE_DIR, 'scannet_train_detection_data')
         if data_path is not None:
             self.data_path = data_path

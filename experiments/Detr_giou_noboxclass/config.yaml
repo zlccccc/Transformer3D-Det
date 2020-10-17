@@ -38,7 +38,7 @@ train:
         name: Scannetv2
         split_set: train
         # data_path: C:\Users\ZLC\Desktop\pycodes\data\scannet_train_detection_data
-        data_path: /data1/zhaolichen/data/scannet_train_detection_data
+        data_path: /mnt/lustre/liujie4/big/scannet_train_detection_data
         augment: True
         # use_color: True
         # use_height: True  # use it as feature
@@ -69,6 +69,6 @@ test:
             name: Scannetv2
             split_set: val
             # data_path: C:\Users\ZLC\Desktop\pycodes\data\scannet_train_detection_data
-            data_path: /data1/zhaolichen/data/scannet_train_detection_data
+            data_path: /mnt/lustre/liujie4/big/scannet_train_detection_data
             # use_color: True
             # use_height: True  # use it as feature

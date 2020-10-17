@@ -16,13 +16,15 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 MODEL_DIR = os.path.join(ROOT_DIR, 'models')
+POINT2_DIR = os.path.join(ROOT_DIR, 'pointnet2_python')
 sys.path.append(MODEL_DIR)
 sys.path.append(BASE_DIR)
+sys.path.append(POINT2_DIR)
 # print('\n'.join(sys.path))
 from backbone_module import Pointnet2Backbone
 from voting_module import VotingModule
 from dump_helper import dump_results
-
+from pointnet_cls import get_model
 
 class VoteDetr(nn.Module):
     r"""
@@ -101,7 +103,7 @@ class VoteDetr(nn.Module):
             end_points: dict
         """
         end_points = {}
-
+        # import ipdb; ipdb.set_trace()
         end_points = self.backbone_net(inputs['point_clouds'], end_points)
 
         # --------- HOUGH VOTING ---------

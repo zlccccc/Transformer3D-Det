@@ -12,7 +12,7 @@ from core.other.lr_scheduler import get_lr_scheduler
 from core.other.logs import Loggers
 from core.utils.utils import load_state
 from core.runner import getrunner
-
+import ipdb
 import yaml
 from easydict import EasyDict
 import torch
@@ -25,14 +25,14 @@ parser.add_argument('--test', action='store_true', default=False, help='(option)
 parser.add_argument('--save', action='store_true', default=False, help='(option) generate testset result')
 parser.add_argument('--recover', action='store_true', default=False, help='(option) change config and recover')
 parser.add_argument('--opt', default='None', type=str, help='other option')
-parser.add_argument('--gpu', default='0', type=str, help='gpu device')
+# parser.add_argument('--gpu', default='0', type=str, help='gpu device')
 
 
 def main():
     args = parser.parse_args()
     torch.backends.cudnn.enabled = False
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    import crash_on_ipy
     # print('config', args.config)
     with open(args.config, encoding='utf-8') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
@@ -57,11 +57,11 @@ def main():
 
     loggers = Loggers(config.common.logs)
     loggers.update_loss({'args_out': args, 'config_out': config}, True)
-
     train_dataset = get_one_dataset(config.train.dataset)
     test_datasets = get_dataset(config.test.dataset)
 
     model = model_entry(config.common.model)
+    # import ipdb; ipdb.set_trace()
     # TO CHANGE BASE_LR AND WEIGHT_DECAY (group parameters)
     base_lr = config.train.lr_scheduler.base_lr
     weight_decay = config.train.optimizer.weight_decay
