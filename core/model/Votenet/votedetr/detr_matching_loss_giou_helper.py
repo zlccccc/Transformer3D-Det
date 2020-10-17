@@ -162,6 +162,7 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
 
         batch_gt_size = batch_gt_residual + meansize_gt
         batch_pred_size = batch_pred_residual + meansize_gt
+        batch_pred_size = torch.relu(batch_pred_size)
 
         # AFTER TESTING: THIS IS OKAY
         # for y in range(GT_COUNT): # testing

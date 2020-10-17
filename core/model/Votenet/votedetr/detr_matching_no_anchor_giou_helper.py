@@ -134,7 +134,7 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
         batch_gt_center = gt_center[bs, None, box_label_mask[bs], :].repeat(MAXQ, 1, 1)
         GT_COUNT = batch_gt_center.shape[1]
         if GT_COUNT == 0:  # append zero
-            print('Warning! No object in the object!')
+            print('Warning! No object in the object!', flush=True)
             size_giou_loss.append(torch.zeros(MAXQ, GT_COUNT).type_as(batch_gt_center))
             size_cdist_loss.append(0)
             continue
@@ -173,10 +173,14 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
         bbox_gt = box_c2p(torch.cat([batch_gt_center, batch_gt_size], dim=-1)).view(-1, 6)
         bbox_pred = box_c2p(torch.cat([batch_pred_center, batch_pred_size], dim=-1)).view(-1, 6)
 
-        cdist = torch.sum(((bbox_gt - bbox_pred) / normalize_size[bs:bs+1, :].repeat(MAXQ * GT_COUNT, 2)).pow(2), -1)
+        norm_matrix = normalize_size[bs:bs+1, :].repeat(MAXQ * GT_COUNT, 2)
+        cdist = torch.sum(((bbox_gt - bbox_pred) / norm_matrix).pow(2), -1)
         cdist = cdist.reshape(MAXQ, GT_COUNT)
         size_cdist_loss.append(cdist)
         # print(cdist.shape, '<< cdist', flush=True)
+        # normalize; for grad
+        bbox_gt = bbox_gt / norm_matrix
+        bbox_pred = bbox_pred / norm_matrix
 
         giou = iou_loss(bbox_gt, bbox_pred)
         giou = giou.reshape(MAXQ, GT_COUNT)

@@ -13,7 +13,7 @@ class votenet(base_module):
         else:
             raise NotImplementedError(config.task_type)
         if config.net_type == 'votenet':
-            from .models.votenet import VoteNet, get_loss
+            from .models.votenet import VoteNet
             from ap_helper import APCalculator, parse_predictions, parse_groundtruths
             self.APCalculator = APCalculator
             self.parse_predictions = parse_predictions
@@ -26,6 +26,14 @@ class votenet(base_module):
                                input_feature_dim=config.num_input_channel,
                                vote_factor=config.vote_factor,
                                sampling=config.cluster_sampling)
+            loss_type = config.get('loss_type', 'NMS')
+            if loss_type == 'NMS':
+                from .models.votenet import get_loss
+            elif loss_type == 'matching_giou':
+                from .votedetr.votedetr import VoteDetr
+                from .votedetr.detr_matching_loss_giou_helper import get_loss
+            else:
+                raise NotImplementedError(config.loss_type)
             self.criterion = get_loss
         elif config.net_type == 'detr':
             from .votedetr.votedetr import VoteDetr
