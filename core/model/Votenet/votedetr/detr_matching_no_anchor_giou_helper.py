@@ -373,17 +373,24 @@ def get_loss(end_points, config):
     #     torch.sum(objectness_mask.float())/float(total_num_proposal) - end_points['pos_ratio']
 
     # Box loss and sem cls loss
-    config_matcher = {
-        'heading_class_loss': 1,
-        'heading_residual_loss': 10,
-        'size_iou_loss': 10,
-        'size_cdist_loss': 1,
-        'cls_loss': 1,
-        'obj_weight_choose(loss)': 1,
-    }
-    loss_weight_dict = config_matcher.copy()
-    del loss_weight_dict['obj_weight_choose(loss)']
-    loss_weight_dict['obj_loss'] = 5  # for obj if used (transformer)
+    if config.loss_weight is not None:
+        # print('using loss weight from config', config.loss_weight, flush=True)
+        config_matcher = config.loss_weight.matching_weight
+        loss_weight_dict = config.loss_weight.loss_weight
+    else:
+        config_matcher = {
+            'heading_class_loss': 1,
+            'heading_residual_loss': 10,
+            'size_iou_loss': 10,
+            'size_cdist_loss': 1,
+            'cls_loss': 0,
+            'obj_weight_choose(loss)': 0,
+        }
+        loss_weight_dict = config_matcher.copy()
+        del loss_weight_dict['obj_weight_choose(loss)']
+        loss_weight_dict['cls_loss'] = 1  # for cls if used (transformer)
+        loss_weight_dict['obj_loss'] = 5  # for obj if used (transformer)
+
     bbox_loss, end_points, indices = compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict)
 
     end_points['box_loss'] = bbox_loss

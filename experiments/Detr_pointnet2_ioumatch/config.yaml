@@ -9,7 +9,7 @@ common:
         vote_factor: 1
         cluster_sampling: bbox_directly
         backbone:
-            name: votenet_backbone
+            # name: votenet_backbone
             name: pointnet
         transformer:  # just for transformer
             position_embedding: sine
@@ -23,6 +23,21 @@ common:
             nheads: 8
             num_queries: 40
             pre_norm: False
+        loss_weight:
+            matching_weight:
+                heading_class_loss: 0
+                heading_residual_loss: 0
+                size_iou_loss: 10
+                size_cdist_loss: 1
+                cls_loss: 0
+                obj_weight_choose(loss): 0
+            loss_weight:
+                heading_class_loss: 1  # heading angle
+                heading_residual_loss: 10
+                size_iou_loss: 10  # giou_loss = 1-giou
+                size_cdist_loss: 1  # cdist(l2) loss
+                cls_loss: 1  # obj class loss
+                obj_loss: 5  # obj usage loss; weight=[0.2, 0.8]
     logs:
         base_logger:
             path: log/log.txt

@@ -9,6 +9,10 @@ class votenet(base_module):
         if config.task_type == 'Scannetv2':
             from model_util_scannet import ScannetDatasetConfig
             DATASET_CONFIG = ScannetDatasetConfig()
+            loss_weight = config.get('loss_weight', None)  # get loss weight
+            if loss_weight is not None:
+                print('Using loss weight from config', loss_weight)
+            DATASET_CONFIG.loss_weight = loss_weight
             self.DATASET_CONFIG = DATASET_CONFIG
         else:
             raise NotImplementedError(config.task_type)
