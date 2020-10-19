@@ -15,6 +15,12 @@ def get_lr_scheduler(config):
         config['last_epoch'] = config['last_iter']
         config.pop('last_iter')
         return lr_scheduler.StepLR(**config)
+    elif name == 'lr_scheduler_multistep':
+        print(config.keys(), '  <<< using torch-StepLR')
+        config.pop('base_lr')  # base_lr only for print (get lr not use)
+        config['last_epoch'] = config['last_iter']
+        config.pop('last_iter')
+        return lr_scheduler.MultiStepLR(**config)
     elif name == 'cosine':
         print(config.keys(), '  <<< using torch-CosineLR')
         config.pop('base_lr')  # base_lr only for print (get lr not use)

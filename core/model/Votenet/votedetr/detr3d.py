@@ -43,6 +43,7 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         self.bbox_embed = MLP(hidden_dim, hidden_dim, bbox_output_shape, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
         self.pos_embd_type = config_transformer.position_embedding
+        self.mask_type = config_transformer.get('mask', 'detr_mask')
         if self.pos_embd_type == 'self':
             self.pos_embd = None
         else:
@@ -66,7 +67,14 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         """
         B, N, _ = xyz.shape
         _, _, C = features.shape
-        mask = torch.zeros(B, N).bool().to(xyz.device)
+        # maybe detr_mask is equal to None mask
+        # import ipdb; ipdb.set_trace()
+        if self.mask_type == 'detr_mask':
+            mask = torch.zeros(B, N).bool().to(xyz.device)
+        elif self.mask_type == 'no_mask':
+            mask = None
+        else:
+            raise NotImplementedError
         # print(mask, ' <<< mask')
         if self.pos_embd_type == 'self':
             pos_embd = self.input_proj(features)

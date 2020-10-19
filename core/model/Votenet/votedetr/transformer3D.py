@@ -51,7 +51,8 @@ class Transformer3D(nn.Module):
         src = src.permute(1, 0, 2)
         pos_embed = pos_embed.permute(1, 0, 2)
         query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
-        mask = mask.flatten(1)
+        if mask is not None: 
+            mask = mask.flatten(1)
         # mask = None
         # print(mask)
         # print(src.shape, pos_embed.shape, query_embed.shape, mask.shape, '<<< src and post shape')

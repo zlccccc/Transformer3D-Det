@@ -13,6 +13,8 @@ class votenet(base_module):
             if loss_weight is not None:
                 print('Using loss weight from config', loss_weight)
             DATASET_CONFIG.loss_weight = loss_weight
+            num_heading_bin=config.get('num_heading_bin', 1)
+            DATASET_CONFIG.num_heading_bin = num_heading_bin
             self.DATASET_CONFIG = DATASET_CONFIG
         else:
             raise NotImplementedError(config.task_type)
