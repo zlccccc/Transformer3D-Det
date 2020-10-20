@@ -128,6 +128,10 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
     size_cdist_loss = []
 
     normalize_size = end_points['normalize_size']
+    if config.loss_weight is None:
+        cdist_type = 'l2'
+    else:
+        cdist_type = config.loss_weight.get('loss_cdist_type', 'l2')
     # print(size_class_pred.shape, size_class_gt.shape, size_residual_pred.shape, size_residual_gt.shape, '<< size class label; pred and gt shape')
     # print(size_class_gt, size_residual_gt)
     for bs in range(B):
@@ -175,7 +179,15 @@ def compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict):
         bbox_pred = box_c2p(torch.cat([batch_pred_center, batch_pred_size], dim=-1)).view(-1, 6)
 
         norm_matrix = normalize_size[bs:bs+1, :].repeat(MAXQ * GT_COUNT, 2)
-        cdist = torch.sum(((bbox_gt - bbox_pred) / norm_matrix).pow(2), -1)
+
+        if cdist_type == 'l2':  # get bbox [gt and pred] loss
+            bbox_div = bbox_gt - bbox_pred
+            cdist = torch.sum((bbox_div / norm_matrix).pow(2), -1)
+        elif cdist_type == 'l1':
+            bbox_div = bbox_gt - bbox_pred
+            cdist = torch.sum((bbox_div / norm_matrix).abs(), -1)
+        else:
+            raise NotImplementedError('cdist_type', cdist_type)
         cdist = cdist.reshape(MAXQ, GT_COUNT)
         size_cdist_loss.append(cdist)
         # print(cdist.shape, '<< cdist', flush=True)
@@ -382,7 +394,7 @@ def get_loss(end_points, config):
             'heading_class_loss': 1,
             'heading_residual_loss': 10,
             'size_iou_loss': 10,
-            'size_cdist_loss': 1,
+            'size_cdist_loss': 2,  # also use config.loss_weight.size_cdist_type
             'cls_loss': 0,
             'obj_weight_choose(loss)': 0,
         }
