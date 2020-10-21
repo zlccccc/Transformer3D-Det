@@ -20,7 +20,7 @@ class Transformer3D(nn.Module):
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
                  num_decoder_layers=6, dim_feedforward=2048, dropout=0,
                  activation="relu", normalize_before=False,
-                 return_intermediate_dec=False):
+                 return_intermediate_dec=False, have_decoder=True):
         super().__init__()
 
         encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,
@@ -28,11 +28,13 @@ class Transformer3D(nn.Module):
         encoder_norm = nn.LayerNorm(d_model) if normalize_before else None
         self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
-        decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,
-                                                dropout, activation, normalize_before)
-        decoder_norm = nn.LayerNorm(d_model)
-        self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,
-                                          return_intermediate=return_intermediate_dec)
+        self.have_decoder = have_decoder
+        if have_decoder:
+            decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,
+                                                    dropout, activation, normalize_before)
+            decoder_norm = nn.LayerNorm(d_model)
+            self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,
+                                              return_intermediate=return_intermediate_dec)
 
         self._reset_parameters()
 
@@ -44,13 +46,12 @@ class Transformer3D(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, src, mask, query_embed, pos_embed):
+    def forward(self, src, mask, query_embed, pos_embed, static_feat=None):  #TODO ADD STATIC_FEAT(WEIGHTED SUM)
         # flatten BxNxC to NxBxC
         # print(src.shape, pos_embed.shape, query_embed.shape, '<<< initial src and query shape', mask.shape, flush=True)
         B, N, C = src.shape
         src = src.permute(1, 0, 2)
         pos_embed = pos_embed.permute(1, 0, 2)
-        query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
         if mask is not None: 
             mask = mask.flatten(1)
         # mask = None
@@ -60,9 +61,13 @@ class Transformer3D(nn.Module):
         # print(src)
         # print(src.mean(), src.std(), '<< transformer input std value features mean and std', flush=True)
 
-        tgt = torch.zeros_like(query_embed)
         memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
         # print('encoder done ???')
+        if not self.have_decoder:  # TODO LOCAL ATTENTION
+            return memory.permute(1, 0, 2)  # just return it
+        # to get decode layer
+        query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
+        tgt = torch.zeros_like(query_embed)
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
         # print(hs.transpose(1,2).shape, memory.shape, '<< final encoder and decode shape')
@@ -290,16 +295,33 @@ def _get_clones(module, N):
 
 
 def build_transformer(args):
-    return Transformer3D(
-        d_model=args.hidden_dim,
-        dropout=args.dropout,
-        nhead=args.nheads,
-        dim_feedforward=args.dim_feedforward,
-        num_encoder_layers=args.enc_layers,
-        num_decoder_layers=args.dec_layers,
-        normalize_before=args.pre_norm,
-        return_intermediate_dec=True,
-    )
+    transformer_type = args.get('transformer_type', 'enc_dec')
+    print('[build transformer] Using transformer type', transformer_type)
+    if transformer_type == 'enc_dec':
+        return Transformer3D(
+            d_model=args.hidden_dim,
+            dropout=args.dropout,
+            nhead=args.nheads,
+            dim_feedforward=args.dim_feedforward,
+            num_encoder_layers=args.enc_layers,
+            num_decoder_layers=args.dec_layers,
+            normalize_before=args.pre_norm,
+            return_intermediate_dec=True,
+        )
+    elif transformer_type == 'enc':
+        return Transformer3D(
+            d_model=args.hidden_dim,
+            dropout=args.dropout,
+            nhead=args.nheads,
+            dim_feedforward=args.dim_feedforward,
+            num_encoder_layers=args.enc_layers,
+            normalize_before=args.pre_norm,
+            return_intermediate_dec=True,
+            have_decoder=False,
+        )   
+    else:
+        raise NotImplementedError(transformer_type)
+
 
 
 def _get_activation_fn(activation):

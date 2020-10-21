@@ -357,7 +357,7 @@ def get_loss(end_points, config):
                 heading_class_label, heading_residual_label,
                 size_class_label, size_residual_label,
                 sem_cls_label,
-                box_label_mask,
+                box_label_mas,
                 vote_label, vote_label_mask
             }
         config: dataset config instance
@@ -369,7 +369,6 @@ def get_loss(end_points, config):
     # Vote loss
     vote_loss = compute_cascade_vote_loss(end_points)
     # end_points['vote_loss'] = vote_loss * 0.2
-    end_points['vote_loss'] = vote_loss * 0
 
     # Obj loss
     # objectness_loss, objectness_label, objectness_mask, object_assignment = \
@@ -387,8 +386,8 @@ def get_loss(end_points, config):
     # Box loss and sem cls loss
     if config.loss_weight is not None:
         # print('using loss weight from config', config.loss_weight, flush=True)
-        config_matcher = config.loss_weight.matching_weight
-        loss_weight_dict = config.loss_weight.loss_weight
+        config_matcher = config.loss_weight.matching_weight.copy()
+        loss_weight_dict = config.loss_weight.loss_weight.copy()
     else:
         config_matcher = {
             'heading_class_loss': 1,
@@ -402,6 +401,15 @@ def get_loss(end_points, config):
         del loss_weight_dict['obj_weight_choose(loss)']
         loss_weight_dict['cls_loss'] = 1  # for cls if used (transformer)
         loss_weight_dict['obj_loss'] = 5  # for obj if used (transformer)
+
+    
+    # print(loss_weight_dict)
+    if 'vote_loss' in loss_weight_dict.keys():
+        vote_loss_weight = loss_weight_dict['vote_loss']
+        del loss_weight_dict['vote_loss']
+    else:
+        vote_loss_weight = 0
+    end_points['vote_loss'] = vote_loss * vote_loss_weight
 
     bbox_loss, end_points, indices = compute_bbox_loss(end_points, config, config_matcher, loss_weight_dict)
 

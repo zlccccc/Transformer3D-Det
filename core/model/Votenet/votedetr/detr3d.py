@@ -23,7 +23,7 @@ from position_encoding import build_position_encoding
 
 class DETR3D(nn.Module):  # just as a backbone; encoding afterward
     """ This is the DETR module that performs object detection """
-    def __init__(self, config_transformer, input_channels, class_output_shape, bbox_output_shape, aux_loss=False):
+    def __init__(self, config_transformer, input_channels, class_output_shape, bbox_output_shape, aux_loss=False):  # new: from config_transformer
         """ Initializes the model.
         Parameters:
             transformer: torch module of the transformer architecture. See transformer.py
@@ -34,16 +34,29 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
             aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.
         """
         super().__init__()
-        num_queries = config_transformer.num_queries
-        self.num_queries = num_queries
+        transformer_type = config_transformer.get('transformer_type', 'enc_dec')
+        self.transformer_type = transformer_type
+        if 'dec' in transformer_type:
+            num_queries = config_transformer.num_queries
+            self.num_queries = num_queries
         self.transformer = build_transformer(config_transformer)
         hidden_dim = self.transformer.d_model
         self.input_proj = nn.Linear(input_channels, hidden_dim)
+
         self.class_embed = nn.Linear(hidden_dim, class_output_shape)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, bbox_output_shape, 3)
-        self.query_embed = nn.Embedding(num_queries, hidden_dim)
+
+        if 'dec' in transformer_type:
+            self.query_embed = nn.Embedding(num_queries, hidden_dim)
+        else:
+            self.query_embed = None
+
         self.pos_embd_type = config_transformer.position_embedding
         self.mask_type = config_transformer.get('mask', 'detr_mask')
+
+        self.weighted_input = config_transformer.get('weighted_input', False)
+        if self.weighted_input:
+            print('[INFO!] Use Weighted Input!')
         if self.pos_embd_type == 'self':
             self.pos_embd = None
         else:
@@ -83,17 +96,36 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         # print(xyz, features, '<< before transformer; features not right')
         features = self.input_proj(features)
         # print(features.shape, features.mean(), features.std(), '<< features std and mean')
-        hs = self.transformer(features, mask, self.query_embed.weight, pos_embd)[0]
-        
-        # print(hs,'<<after transformer', flush=True) # TODO CHECK IT
+        query_embd_weight = self.query_embed.weight if self.query_embed is not None else None
+
+        if self.weighted_input:  #TODO doit
+            value = self.transformer(features, mask, query_embd_weight, pos_embd, xyz)
+        else:
+            value = self.transformer(features, mask, query_embd_weight, pos_embd)
+
         # return: dec_layer * B * Query * C
+        if 'dec' in self.transformer_type:
+            hs = value[0]  # features_output
+        elif self.transformer_type == 'enc':  # TODO THIS IS NOT RIGHT! LAYER TO BE DONE
+            hs = value
+        else:
+            raise NotImplementedError(self.transformer_type)
+        # print(hs,'<<after transformer', flush=True) # TODO CHECK IT
         outputs_class = self.class_embed(hs)
         outputs_coord = self.bbox_embed(hs)
         # outputs_coord = outputs_coord.sigmoid()
         # print(outputs_class.shape, outputs_coord.shape, 'output coord and class')
-        output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}  # final
-        if self.aux_loss:
-            output['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
+        if 'dec' in self.transformer_type:
+            output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}  # final
+            if self.aux_loss:
+                output['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
+
+            if self.weighted_input: # sum with attention weight (just for output!)
+                weighted_xyz = value[2]  # just weighted
+                output['transformer_weighted_xyz'] = weighted_xyz  # just sum it
+        else:
+            output = {'pred_logits': outputs_class, 'pred_boxes': outputs_coord}  # final
+            
         return output
 
     @torch.jit.unused

@@ -83,8 +83,12 @@ class VoteDetr(nn.Module):
 
         # Vote aggregation and detection
         print(self.sampling, '<< sampling')
-        if self.sampling in ('vote_fps', 'seed_fps'):
+        if self.sampling in ('vote_fps', 'seed_fps', 'random'):
             from proposal_votenet import ProposalModule
+            self.pnet = ProposalModule(num_class, num_heading_bin, num_size_cluster,
+                                       mean_size_arr, num_proposal, sampling, config_transformer=config_transformer)
+        elif self.sampling in ('vote_fps_bbox', 'seed_fps_bbox', 'random_bbox'):
+            from proposal_votenet_bbox import ProposalModule
             self.pnet = ProposalModule(num_class, num_heading_bin, num_size_cluster,
                                        mean_size_arr, num_proposal, sampling, config_transformer=config_transformer)
         elif self.sampling in ('no_vote'):
@@ -146,15 +150,15 @@ class VoteDetr(nn.Module):
             seed_xyz, features = end_points['seed_xyz'], end_points['seed_features']
 
         # print(seed_xyz.shape, features.shape, '<<<   detr codes; features dim')
-        if self.sampling in ('vote_fps', 'seed_fps'):
+        end_points['point_clouds'] = inputs['point_clouds']  # for pc normalization
+        if self.sampling in ('vote_fps', 'seed_fps', 'vote_fps_bbox', 'seed_fps_bbox'):
             end_points = self.pnet(seed_xyz, xyz, features, end_points)  # for feature
         elif self.sampling in ('no_vote'):
             end_points = self.pnet(seed_xyz, features, end_points)  # for feature
         elif self.sampling in ('bbox_directly'):
-            end_points['point_clouds'] = inputs['point_clouds']  # for normalization
             end_points = self.pnet(seed_xyz, features, end_points)  # for feature
-            del end_points['point_clouds']
         else:
             raise NotImplementedError(self.sampling)
+        del end_points['point_clouds']
 
         return end_points
