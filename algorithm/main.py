@@ -35,7 +35,12 @@ def main():
     import crash_on_ipy
     # print('config', args.config)
     with open(args.config, encoding='utf-8') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
+        version = yaml.__version__
+        print('load config from yaml', version)
+        if version[0] >= '5':
+            config = yaml.load(f, Loader=yaml.FullLoader)
+        else:
+            config = yaml.load(f)
     config = EasyDict(config)
     if args.test:
         print('===============    use args --test    ===============')
@@ -65,7 +70,10 @@ def main():
     # TO CHANGE BASE_LR AND WEIGHT_DECAY (group parameters)
     base_lr = config.train.lr_scheduler.base_lr
     weight_decay = config.train.optimizer.weight_decay
-    parameters = model.set_params(base_lr, weight_decay)  # for grouping
+    weight_dict = config.train.get('params_weight_dict', None)
+    if weight_dict is not None:
+        weight_type = 'weight_dict'
+    parameters = model.set_params(base_lr, weight_decay, weight_type, weight_dict)  # for grouping
 
     # FOR MULTI-GPU USE
     if torch.cuda.is_available:

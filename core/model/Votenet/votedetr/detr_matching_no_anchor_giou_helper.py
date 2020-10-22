@@ -53,8 +53,8 @@ def compute_vote_loss(end_points, vote_xyz):
     seed_gt_votes_mask = torch.gather(end_points['vote_label_mask'], 1, seed_inds)
     seed_inds_expand = seed_inds.view(batch_size, num_seed, 1).repeat(1, 1, 3 * GT_VOTE_FACTOR)
     seed_gt_votes = torch.gather(end_points['vote_label'], 1, seed_inds_expand)
-    # seed_gt_votes += end_points['seed_xyz'].repeat(1, 1, 3)
-    seed_gt_votes = end_points['seed_xyz'].repeat(1,1,3)  # NOT VOTE
+    seed_gt_votes += end_points['seed_xyz'].repeat(1, 1, 3)  # TODO: VOTE WITH SEED_XYZ
+    # seed_gt_votes = end_points['seed_xyz'].repeat(1,1,3)  # NOT VOTE
 
     # Compute the min of min of distance
     vote_xyz_reshape = vote_xyz.view(batch_size * num_seed, -1, 3)  # from B,num_seed*vote_factor,3 to B*num_seed,vote_factor,3

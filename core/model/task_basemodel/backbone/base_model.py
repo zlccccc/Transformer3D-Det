@@ -74,7 +74,7 @@ class base_module(nn.Module):
         for m in self.modules():
             init_params(m, BatchNorm2d, init_type, nonlinearity=self.init_relu)
 
-    def set_params_lr(self,base_lr, weight_decay):
+    def set_params_conv(self,base_lr, weight_decay):
         parameters = []
         lr_decay_mult = {}
         lr_decay_mult['nn.Conv2d'] = [1, 1, 2, 0]  # weight and bias mult
@@ -109,14 +109,40 @@ class base_module(nn.Module):
                 continue
             if name not in arranged_names:
                 print('set parameter (default)', name)
-                self.params.append({'params': param})  # 默认parameter group(base lr; parameter group)
+                parameters.append({'params': param})  # 默认parameter group(base lr; parameter group)
         print('get params end')
         return parameters
 
-    def set_params(self, base_lr, weight_decay, weight_type='base'):
+
+    def set_params_lr_dict(self, base_lr, weight_decay, weight_dict):
+        print('Set params dict lr!', weight_dict, 'Base:', base_lr, weight_decay)
+        params_dict = weight_dict
+        assert 'Default' not in params_dict.keys(), 'KEY \'Default\' should not in weight_dict(automantic set)'
+        params_dict['Default'] = {}
+        for name in params_dict.keys():
+            params_dict[name]['params'] = []
+        for name, param in self.named_parameters():
+            result_key = 'Default'
+            if not param.requires_grad:
+                continue
+            for key in weight_dict.keys():
+                if key in name:
+                    result_key = key
+                    break
+            # print(result_key, name, ' DEBUG<<< name and result key!!!')
+            print('Set PARAM', name, 'USING KEY', result_key, [(key, value) for key, value in weight_dict[result_key].items() if key != 'params'])
+            params_dict[result_key]['params'].append(param)
+        parameters = []  # <<< TODO FOR Parameters
+        for key, value in params_dict.items():
+            parameters.append(value)
+        return parameters
+
+    def set_params(self, base_lr, weight_decay, weight_type='base', weight_dict=None):
         if weight_type == 'group':
-            return self.set_params_lr(base_lr, weight_decay)
+            return self.set_params_conv(base_lr, weight_decay)
         elif weight_type == 'base':
             return self.parameters()
+        elif weight_type == 'weight_dict':
+            return self.set_params_lr_dict(base_lr, weight_decay, weight_dict)
         else:
             raise NotImplementedError(weight_type)

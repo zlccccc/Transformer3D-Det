@@ -19,7 +19,7 @@ import pointnet2_utils
 from detr3d import DETR3D
 
 
-def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr):  # TODO CHANGE IT
+def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr, center_with_bias=False):  # TODO CHANGE IT
     # net_transposed = net.transpose(2, 1)
     # TODO CHANGE OUTPUT_DICT
     pred_logits = output_dict['pred_logits']
@@ -36,6 +36,12 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     end_points['sem_cls_scores'] = sem_cls_scores
 
     center = pred_boxes[:,:,0:3] # (batch_size, num_proposal, 3) TODO RESIDUAL
+    if center_with_bias:
+        # print('CENTER ADDING VOTE-XYZ', flush=True)
+        base_xyz = end_points['aggregated_vote_xyz'] # (batch_size, num_proposal, 3)
+        center = center + base_xyz  # residual
+    else:
+        raise NotImplementedError('center without bias(for decoder): not Implemented')
     end_points['center'] = center
 
     heading_scores = pred_boxes[:,:,3:3+num_heading_bin]  # theta; todo change it
@@ -47,7 +53,7 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     size_scores = pred_boxes[:,:,3+num_heading_bin*2:3+num_heading_bin*2+num_size_cluster]
     size_residuals_normalized = pred_boxes[:,:,3+num_heading_bin*2+num_size_cluster:3+num_heading_bin*2+num_size_cluster*4].view([batch_size, num_proposal, num_size_cluster, 3]) # Bxnum_proposalxnum_size_clusterx3 TODO REMOVE BBOX-SIZE-DEFINED
     # size_residuals_normalized = size_residuals_normalized.sigmoid() * 2 - 1
-    size_residuals_normalized = size_residuals_normalized.atan() / math.pi  # -0.5 to 0.5
+    # size_residuals_normalized = size_residuals_normalized.atan() / math.pi  # -0.5 to 0.5
     # print('size normalized value max and min', size_residuals_normalized.max(), size_residuals_normalized.min(), size_residuals_normalized.std(), flush=True)
     end_points['size_scores'] = size_scores
     end_points['size_residuals_normalized'] = size_residuals_normalized
@@ -63,6 +69,9 @@ class ProposalModule(nn.Module):
                  seed_feat_dim=256, config_transformer=None):
         super().__init__()
         print(config_transformer, '<< config transformer ')
+        transformer_type = config_transformer.get('transformer_type', 'enc_dec')
+        self.transformer_type = transformer_type
+        self.center_with_bias = 'dec' not in transformer_type
 
         self.num_class = num_class
         self.num_heading_bin = num_heading_bin
@@ -137,7 +146,7 @@ class ProposalModule(nn.Module):
         # output_dict = self.detr(torch.cat([xyz, _xyz], dim=-1), features, end_points)
         output_dict = self.detr(xyz, features, end_points)
         # print('??  output dict done')
-        end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
+        end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr, self.center_with_bias)
 
         return end_points
 

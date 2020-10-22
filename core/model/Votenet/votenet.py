@@ -58,8 +58,10 @@ class votenet(base_module):
                                 config_backbone=config.get('backbone', None),
                                 config_transformer=config.transformer)
             if config.loss_type == 'NMS':
+                from .models.votenet import get_loss
+            elif config.loss_type == 'decoder_NMS':
                 from detr_NMS_loss_helper import get_loss
-            elif config.loss_type == 'matching':
+            elif config.loss_type == 'matching':  # TODO VOTEPOS NOT RIGHT! (WITH BIAS) ALL WRONG
                 from detr_matching_loss_helper import get_loss
             elif config.loss_type == 'matching_giou':
                 from detr_matching_loss_giou_helper import get_loss

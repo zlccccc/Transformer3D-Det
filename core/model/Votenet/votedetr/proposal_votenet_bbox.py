@@ -50,15 +50,19 @@ def decode_scores_bbox(output_dict, end_points,  num_class, num_heading_bin, num
 
     normalize_size = normalize_size.unsqueeze(1).repeat(1, num_proposal, 1)
     center = end_points['aggregated_vote_xyz']
-    residual = pred_boxes[:, :, 0:3].atan() / math.pi * 2
+    # residual = pred_boxes[:, :, 0:3]
+    # residual = residual * normalize_size
+    # print(residual.shape, normalize_shape.shape, '  << residual shape', flush=True)
     # print(residual.min(), residual.max())
-    center = center + residual
-    # center = pred_boxes[:,:,0:3].sigmoid() # (batch_size, num_proposal, 3) TODO RESIDUAL
-    # center = (center - 0.5) * normalize_size
-    end_points['center'] = center  # TODO WITH XYZ
+
     box_size = pred_boxes[:,:,3:6].sigmoid()
     box_size = box_size * normalize_size
     end_points['bbox_size'] = box_size
+
+    residual = pred_boxes[:, :, 0:3].atan() / math.pi * 2
+    center = center + residual * normalize_size / 2
+    # center = center + residual * box_size / 2
+    end_points['center'] = center  # TODO WITH XYZ
 
     heading_scores = pred_boxes[:,:,6:6+num_heading_bin]  # theta; todo change it
     heading_residuals_normalized = pred_boxes[:,:,6+num_heading_bin:6+num_heading_bin*2]
