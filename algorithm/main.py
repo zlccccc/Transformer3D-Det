@@ -73,6 +73,8 @@ def main():
     weight_dict = config.train.get('params_weight_dict', None)
     if weight_dict is not None:
         weight_type = 'weight_dict'
+    else:
+        weight_type = 'base'
     parameters = model.set_params(base_lr, weight_decay, weight_type, weight_dict)  # for grouping
 
     # FOR MULTI-GPU USE

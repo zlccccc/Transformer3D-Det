@@ -30,11 +30,14 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     batch_size = pred_boxes.shape[0]
     num_proposal = pred_boxes.shape[1]
 
-    objectness_scores = pred_logits[:,:,0:2]  # TODO CHANGE IT; JUST SOFTMAX
+    assert pred_logits.shape[-1] == 2+num_class, 'pred_logits.shape wrong'
+    objectness_scores = pred_logits[:,:,0:2]  # TODO CHANGE IT; JUST SOFTMAXd
     end_points['objectness_scores'] = objectness_scores
     sem_cls_scores = pred_logits[:,:,2:2+num_class] # Bxnum_proposalx10
     end_points['sem_cls_scores'] = sem_cls_scores
 
+
+    assert pred_boxes.shape[-1] == 3+num_heading_bin*2+num_size_cluster*4, 'pred_boxes.shape wrong'
     center = pred_boxes[:,:,0:3] # (batch_size, num_proposal, 3) TODO RESIDUAL
     if center_with_bias:
         # print('CENTER ADDING VOTE-XYZ', flush=True)
@@ -109,6 +112,7 @@ class ProposalModule(nn.Module):
         Returns:
             scores: (B,num_proposal,2+3+NH*2+NS*4) 
         """
+        # print(initial_xyz, end_points['seed_xyz'], '<< TESTING', flush=True)
         if self.sampling == 'vote_fps':
             # Farthest point sampling (FPS) on votes
             xyz, features, fps_inds = self.vote_aggregation(xyz, features)
@@ -127,6 +131,7 @@ class ProposalModule(nn.Module):
             xyz, features, _ = self.vote_aggregation(xyz, features, sample_inds)
         else:
             raise NotImplementedError('Unknown sampling strategy: %s. Exiting!' % (self.sampling))
+        
         end_points['aggregated_vote_xyz'] = xyz  # (batch_size, num_proposal, 3)
         end_points['aggregated_vote_inds'] = sample_inds  # (batch_size, num_proposal,) # should be 0,1,2,...,num_proposal
 

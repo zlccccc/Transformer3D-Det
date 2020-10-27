@@ -19,7 +19,7 @@ class Transformer3D(nn.Module):
 
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
                  num_decoder_layers=6, dim_feedforward=2048, dropout=0,
-                 activation="relu", normalize_before=False,
+                 activation="gelu", normalize_before=False,
                  return_intermediate_dec=False, have_decoder=True):
         super().__init__()
 
@@ -46,14 +46,15 @@ class Transformer3D(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, src, mask, query_embed, pos_embed, static_feat=None):  #TODO ADD STATIC_FEAT(WEIGHTED SUM)
+    def forward(self, src, mask, query_embed, pos_embed, static_feat=None, src_mask=None):  #TODO ADD STATIC_FEAT(WEIGHTED SUM or fc)
         # flatten BxNxC to NxBxC
         # print(src.shape, pos_embed.shape, query_embed.shape, '<<< initial src and query shape', mask.shape, flush=True)
         B, N, C = src.shape
         src = src.permute(1, 0, 2)
-        pos_embed = pos_embed.permute(1, 0, 2)
-        if mask is not None: 
-            mask = mask.flatten(1)
+        if pos_embed is not None:
+            pos_embed = pos_embed.permute(1, 0, 2)
+        # print(mask.shape, '<< mask shape, from transformer3d.py', src_mask, flush=True)
+        # print('<< mask shape, from transformer3d.py', src_mask, flush=True)
         # mask = None
         # print(mask)
         # print(src.shape, pos_embed.shape, query_embed.shape, mask.shape, '<<< src and post shape')
@@ -61,7 +62,7 @@ class Transformer3D(nn.Module):
         # print(src)
         # print(src.mean(), src.std(), '<< transformer input std value features mean and std', flush=True)
 
-        memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)
+        memory = self.encoder(src, src_key_padding_mask=mask, mask=src_mask, pos=pos_embed)
         # print('encoder done ???')
         if not self.have_decoder:  # TODO LOCAL ATTENTION
             return memory.permute(1, 0, 2)  # just return it
@@ -165,13 +166,25 @@ class TransformerEncoderLayer(nn.Module):
 
     def forward_post(self,
                      src,
-                     src_mask: Optional[Tensor] = None,
-                     src_key_padding_mask: Optional[Tensor] = None,
+                     src_mask = None,
+                     src_key_padding_mask = None,
                      pos: Optional[Tensor] = None):
         q = k = self.with_pos_embed(src, pos)
-        # print(q.shape, src.shape, src_key_padding_mask.shape, '<< forward post shape')
-        src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
-                              key_padding_mask=src_key_padding_mask)[0]
+        # print(q.shape, src.shape, src_mask.shape, '<< forward post shape; todo', flush=True)
+        bs, src_arr = q.shape[1], []
+        for i in range(bs):
+            key_mask, attn_mask = None, None
+            if src_key_padding_mask is not None:
+                key_mask = src_key_padding_mask[i:i+1]
+            if src_mask is not None:
+                attn_mask = src_mask[i]
+            batch_attn = self.self_attn(q[:, i:i+1, :], k[:, i:i+1, :], value=src[:, i:i+1, :], attn_mask=attn_mask,
+                                        key_padding_mask=key_mask)
+            # print(batch_attn[1].sum(dim=-1))  # TODO it is okay to make a weighted sum
+            src_arr.append(batch_attn[0])
+        src2 = torch.cat(src_arr, dim=1)
+        # src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
+        #                       key_padding_mask=src_key_padding_mask)[0]
         # print(q, k, '<< forward!!')
         # print(src2, '<< forward')
         # exit()
@@ -318,7 +331,7 @@ def build_transformer(args):
             normalize_before=args.pre_norm,
             return_intermediate_dec=True,
             have_decoder=False,
-        )   
+        )
     else:
         raise NotImplementedError(transformer_type)
 
@@ -326,6 +339,7 @@ def build_transformer(args):
 
 def _get_activation_fn(activation):
     """Return an activation function given a string"""
+    print(activation, '<< transformer activation', flush=True)  # TODO REMOVE IT 
     if activation == "relu":
         return F.relu
     if activation == "gelu":

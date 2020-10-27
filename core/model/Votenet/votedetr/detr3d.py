@@ -57,7 +57,7 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         self.weighted_input = config_transformer.get('weighted_input', False)
         if self.weighted_input:
             print('[INFO!] Use Weighted Input!')
-        if self.pos_embd_type == 'self':
+        if self.pos_embd_type in ['self', 'none']:
             self.pos_embd = None
         else:
             self.pos_embd = build_position_encoding(config_transformer.position_embedding, hidden_dim, config_transformer.input_dim)
@@ -84,13 +84,30 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         # import ipdb; ipdb.set_trace()
         if self.mask_type == 'detr_mask':
             mask = torch.zeros(B, N).bool().to(xyz.device)
+            src_mask = None
         elif self.mask_type == 'no_mask':
             mask = None
+            src_mask = None
+        elif self.mask_type.split('_')[0] == 'near':
+            near_kth = int(self.mask_type.split('_')[1])
+            # print('mask_type: get nearest kth', near_kth, flush=True)
+            mask = None
+            # mask = torch.zeros(B, N).bool().to(xyz.device)
+            src_mask = torch.ones(B, N, N).bool().to(xyz.device)
+            A = xyz[:, None, :, :].repeat(1, N, 1, 1)
+            B = xyz[:, :, None, :].repeat(1, 1, N, 1)
+            # print(A.shape, B.shape, '<< mask A and B shape', flush=True)
+            dist = torch.sum((A - B).pow(2), dim=-1)
+            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=-1, largest=False, sorted=False)
+            # print(dist_min.shape, dist_pos.shape, ' << dist min shape', flush=True)
+            src_mask.scatter_(2, dist_pos, False)
         else:
-            raise NotImplementedError
+            raise NotImplementedError(self.mask_type)
         # print(mask, ' <<< mask')
         if self.pos_embd_type == 'self':
             pos_embd = self.input_proj(features)
+        elif self.pos_embd_type == 'none':
+            pos_embd = None
         else:
             pos_embd = self.pos_embd(xyz)
         # print(xyz, features, '<< before transformer; features not right')
@@ -99,9 +116,9 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         query_embd_weight = self.query_embed.weight if self.query_embed is not None else None
 
         if self.weighted_input:  #TODO doit
-            value = self.transformer(features, mask, query_embd_weight, pos_embd, xyz)
+            value = self.transformer(features, mask, query_embd_weight, pos_embd, xyz, src_mask=src_mask)
         else:
-            value = self.transformer(features, mask, query_embd_weight, pos_embd)
+            value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask)
 
         # return: dec_layer * B * Query * C
         if 'dec' in self.transformer_type:

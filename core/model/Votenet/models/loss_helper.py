@@ -151,9 +151,14 @@ def compute_box_and_sem_cls_loss(end_points, config):
     # Compute center loss
     pred_center = end_points['center']
     gt_center = end_points['center_label'][:,:,0:3]
-    dist1, ind1, dist2, _ = nn_distance(pred_center, gt_center) # dist1: BxK, dist2: BxK2
+    # dist1, ind1, dist2, _ = nn_distance(pred_center, gt_center) # dist1: BxK, dist2: BxK2
+    _, ind1, dist2, _ = nn_distance(pred_center, gt_center) # dist1: BxK, dist2: BxK2
     box_label_mask = end_points['box_label_mask']
     objectness_label = end_points['objectness_label'].float()
+    # USE GT_CENTER TO CALCULATE CENTER
+    gt_center_label = torch.gather(gt_center, dim=1, index=object_assignment.unsqueeze(-1).repeat(1, 1, 3))
+    dist1 = torch.norm(gt_center_label - pred_center, p=2, dim=2)
+    # dist2 = torch.sqrt(dist2 + 1e-8)
     centroid_reg_loss1 = \
         torch.sum(dist1*objectness_label)/(torch.sum(objectness_label)+1e-6)
     centroid_reg_loss2 = \

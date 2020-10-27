@@ -15,14 +15,20 @@ class SharedMLP(nn.Sequential):
             args: List[int],
             *,
             bn: bool = False,
-            activation=nn.ReLU(inplace=True),
+            # activation=nn.ReLU(inplace=True),
+            activation=None,
             preact: bool = False,
             first: bool = False,
             name: str = ""
     ):
         super().__init__()
-
+        none_activate = False
+        if activation is None:
+            none_activate = True
+            print('Change: Pointnet Shared MLP Using PReLU')
         for i in range(len(args) - 1):
+            if none_activate:
+                activation = nn.PReLU(args[i + 1])
             self.add_module(
                 name + 'layer{}'.format(i),
                 Conv2d(

@@ -19,7 +19,7 @@ import pointnet2_utils
 from detr3d import DETR3D
 
 
-def decode_scores_bbox(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr):  # TODO CHANGE IT
+def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr, center_with_bias=False):  # TODO CHANGE IT
     # net_transposed = net.transpose(2, 1)
     # TODO CHANGE OUTPUT_DICT
     pred_logits = output_dict['pred_logits']
@@ -35,40 +35,32 @@ def decode_scores_bbox(output_dict, end_points,  num_class, num_heading_bin, num
     sem_cls_scores = pred_logits[:,:,2:2+num_class] # Bxnum_proposalx10
     end_points['sem_cls_scores'] = sem_cls_scores
 
-    # get house size
-    point_cloud = end_points['point_clouds']
-    max_position = torch.max(point_cloud, dim=1)[0]
-    min_position = torch.min(point_cloud, dim=1)[0]
-    point_cloud_size = max_position - min_position
-    normalize_size = torch.Tensor([12, 12, 6]).type_as(point_cloud).unsqueeze(0).repeat(batch_size, 1)
-    normalize_size = torch.max(normalize_size, -min_position * 2)
-    normalize_size = torch.max(normalize_size, max_position * 2)
-    end_points['normalize_size'] = normalize_size  # just for pc normalization
-    # print('decode score box done!', max_position, min_position, point_cloud_size, normalize_size)
-    # print('decode score box done! normalize', normalize_size)
-    # exit()
+    center = pred_boxes[:,:,0:3] # (batch_size, num_proposal, 3) TODO RESIDUAL
+    if center_with_bias:
+        # print('CENTER ADDING VOTE-XYZ', flush=True)
+        base_xyz = end_points['aggregated_vote_xyz'] # (batch_size, num_proposal, 3)
+        center = center + base_xyz  # residual
+    else:
+        raise NotImplementedError('center without bias(for decoder): not Implemented')
+    end_points['center'] = center
 
-    normalize_size = normalize_size.unsqueeze(1).repeat(1, num_proposal, 1)
-    center = end_points['aggregated_vote_xyz']
-    # residual = pred_boxes[:, :, 0:3]
-    # residual = residual * normalize_size
-    # print(residual.shape, normalize_shape.shape, '  << residual shape', flush=True)
-    # print(residual.min(), residual.max())
-
-    box_size = pred_boxes[:,:,3:6].sigmoid()
-    box_size = box_size * normalize_size
-    end_points['bbox_size'] = box_size
-
-    residual = pred_boxes[:, :, 0:3].atan() / math.pi * 2
-    # center = center + residual * normalize_size / 2
-    center = center + residual * box_size / 2
-    end_points['center'] = center  # TODO WITH XYZ
-
-    heading_scores = pred_boxes[:,:,6:6+num_heading_bin]  # theta; todo change it
-    heading_residuals_normalized = pred_boxes[:,:,6+num_heading_bin:6+num_heading_bin*2]
+    heading_scores = pred_boxes[:,:,3:3+num_heading_bin]  # theta; todo change it
+    heading_residuals_normalized = pred_boxes[:,:,3+num_heading_bin:3+num_heading_bin*2]
     end_points['heading_scores'] = heading_scores # Bxnum_proposalxnum_heading_bin
     end_points['heading_residuals_normalized'] = heading_residuals_normalized # Bxnum_proposalxnum_heading_bin (should be -1 to 1)
     end_points['heading_residuals'] = heading_residuals_normalized * (np.pi/num_heading_bin) # Bxnum_proposalxnum_heading_bin
+
+    size_scores = pred_boxes[:,:,3+num_heading_bin*2:3+num_heading_bin*2+num_size_cluster]
+    size_residuals_normalized = pred_boxes[:,:,3+num_heading_bin*2+num_size_cluster:3+num_heading_bin*2+num_size_cluster*4].view([batch_size, num_proposal, num_size_cluster, 3]) # Bxnum_proposalxnum_size_clusterx3 TODO REMOVE BBOX-SIZE-DEFINED
+    # size_residuals_normalized = size_residuals_normalized.sigmoid() * 2 - 1
+    # size_residuals_normalized = size_residuals_normalized.atan() / math.pi  # -0.5 to 0.5
+    # print('size normalized value max and min', size_residuals_normalized.max(), size_residuals_normalized.min(), size_residuals_normalized.std(), flush=True)
+    end_points['size_scores'] = size_scores
+    end_points['size_residuals_normalized'] = size_residuals_normalized
+    mean_size = torch.from_numpy(mean_size_arr.astype(np.float32)).type_as(pred_boxes).unsqueeze(0).unsqueeze(0)
+    end_points['size_residuals'] = size_residuals_normalized * mean_size
+    # print(3+num_heading_bin*2+num_size_cluster*4, ' <<< bbox heading and size tensor shape')
+
     return end_points
 
 
@@ -77,6 +69,9 @@ class ProposalModule(nn.Module):
                  seed_feat_dim=256, config_transformer=None):
         super().__init__()
         print(config_transformer, '<< config transformer ')
+        transformer_type = config_transformer.get('transformer_type', 'enc_dec')
+        self.transformer_type = transformer_type
+        self.center_with_bias = 'dec' not in transformer_type
 
         self.num_class = num_class
         self.num_heading_bin = num_heading_bin
@@ -104,7 +99,7 @@ class ProposalModule(nn.Module):
         self.bn1 = torch.nn.BatchNorm1d(128)
         self.bn2 = torch.nn.BatchNorm1d(128)
         # JUST FOR
-        self.detr = DETR3D(config_transformer, input_channels=128, class_output_shape=2+num_class, bbox_output_shape=3+3+num_heading_bin*2)
+        self.detr = DETR3D(config_transformer, input_channels=128, class_output_shape=2+num_class, bbox_output_shape=3+num_heading_bin*2+num_size_cluster*4)
 
     def forward(self, initial_xyz, xyz, features, end_points):  # initial_xyz and xyz(voted): just for encoding
         """
@@ -114,16 +109,18 @@ class ProposalModule(nn.Module):
         Returns:
             scores: (B,num_proposal,2+3+NH*2+NS*4) 
         """
-        if self.sampling == 'vote_fps_bbox':
+        print(initial_xyz, end_points['seed_xyz'], '<< TESTING', flush=True)
+        if self.sampling == 'vote_fps':
             # Farthest point sampling (FPS) on votes
             xyz, features, fps_inds = self.vote_aggregation(xyz, features)
             sample_inds = fps_inds
-        elif self.sampling == 'seed_fps_bbox':  # regard initial_xyz as seed
+        elif self.sampling == 'seed_fps':  # regard initial_xyz as seed
             # FPS on seed and choose the votes corresponding to the seeds
             # This gets us a slightly better coverage of *object* votes than vote_fps (which tends to get more cluster votes)
+            # print('shape', self.num_proposal, initial_xyz.shape)
             sample_inds = pointnet2_utils.furthest_point_sample(initial_xyz, self.num_proposal)
             xyz, features, _ = self.vote_aggregation(xyz, features, sample_inds)
-        elif self.sampling == 'random_bbox':
+        elif self.sampling == 'random':
             # Random sampling from the votes
             num_seed = initial_xyz.shape[1]
             batch_size = initial_xyz.shape[0]
@@ -131,6 +128,7 @@ class ProposalModule(nn.Module):
             xyz, features, _ = self.vote_aggregation(xyz, features, sample_inds)
         else:
             raise NotImplementedError('Unknown sampling strategy: %s. Exiting!' % (self.sampling))
+        
         end_points['aggregated_vote_xyz'] = xyz  # (batch_size, num_proposal, 3)
         end_points['aggregated_vote_inds'] = sample_inds  # (batch_size, num_proposal,) # should be 0,1,2,...,num_proposal
 
@@ -150,7 +148,7 @@ class ProposalModule(nn.Module):
         # output_dict = self.detr(torch.cat([xyz, _xyz], dim=-1), features, end_points)
         output_dict = self.detr(xyz, features, end_points)
         # print('??  output dict done')
-        end_points = decode_scores_bbox(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr)
+        end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr, self.center_with_bias)
 
         return end_points
 
