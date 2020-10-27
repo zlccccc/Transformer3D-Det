@@ -12,6 +12,7 @@ build/
 *.so
 *.swp
 Log*
+log*
 *.egg-info
 *.egg
 try*
