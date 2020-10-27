@@ -39,19 +39,21 @@ MEAN_COLOR_RGB = np.array([0.5,0.5,0.5]) # sunrgbd color is in 0~1
 
 class SunrgbdDetectionVotesDataset(Dataset):
     def __init__(self, split_set='train', num_points=20000,
-        use_color=False, use_height=False, use_v1=False,
-        augment=False, scan_idx_list=None):
-
+                 use_color=False, use_height=False, use_v1=False,
+                 augment=False, scan_idx_list=None, data_path=None):
         assert(num_points<=50000)
+        if data_path is not None:
+            data_path = os.path.join(data_path, 'sunrgbd')
+        else:
+            data_path = os.path.join(ROOT_DIR, 'runrgbd')
+        print('Sunrgbd Dataset: load data from', data_path, flush=True)
+
         self.use_v1 = use_v1 
         if use_v1:
-            self.data_path = os.path.join(ROOT_DIR,
-                'sunrgbd/sunrgbd_pc_bbox_votes_50k_v1_%s'%(split_set))
+            self.data_path = os.path.join(data_path, 'sunrgbd_pc_bbox_votes_50k_v1_%s'%(split_set))
         else:
-            self.data_path = os.path.join(ROOT_DIR,
-                'sunrgbd/sunrgbd_pc_bbox_votes_50k_v2_%s'%(split_set))
-
-        self.raw_data_path = os.path.join(ROOT_DIR, 'sunrgbd/sunrgbd_trainval')
+            self.data_path = os.path.join(data_path, 'sunrgbd_pc_bbox_votes_50k_v2_%s'%(split_set))
+        # self.raw_data_path = os.path.join(data_path, 'sunrgbd_trainval')  # not useful
         self.scan_names = sorted(list(set([os.path.basename(x)[0:6] \
             for x in os.listdir(self.data_path)])))
         if scan_idx_list is not None:

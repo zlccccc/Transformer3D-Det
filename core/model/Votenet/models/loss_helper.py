@@ -177,6 +177,7 @@ def compute_box_and_sem_cls_loss(end_points, config):
     # Ref: https://discuss.pytorch.org/t/convert-int-into-one-hot-format/507/3
     heading_label_one_hot = torch.cuda.FloatTensor(batch_size, heading_class_label.shape[1], num_heading_bin).zero_()
     heading_label_one_hot.scatter_(2, heading_class_label.unsqueeze(-1), 1) # src==1 so it's *one-hot* (B,K,num_heading_bin)
+    # print(end_points['heading_residuals_normalized'].shape, heading_label_one_hot.shape, heading_residual_normalized_label.shape, '<< heading label normalize shape from loss helper', flush=True)
     heading_residual_normalized_loss = huber_loss(torch.sum(end_points['heading_residuals_normalized']*heading_label_one_hot, -1) - heading_residual_normalized_label, delta=1.0) # (B,K)
     heading_residual_normalized_loss = torch.sum(heading_residual_normalized_loss*objectness_label)/(torch.sum(objectness_label)+1e-6)
 

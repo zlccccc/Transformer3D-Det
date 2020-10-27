@@ -17,6 +17,7 @@ dataset_dict = {
     'SemanticKITTIDataset': 'SementicDataset.SemanticKITTI.SemanticKITTIDataset',
     'SemanticKITTIAUGDataset': 'SementicDataset.SemanticKITTIAUG.SemanticKITTIDataset',
     'Scannetv2': 'Detection3D.scannet.scannet_detection_dataset.ScannetDetectionDataset',
+    'Sunrgbd': 'Detection3D.sunrgbd.sunrgbd_detection_dataset.SunrgbdDetectionVotesDataset',
 }
 
 

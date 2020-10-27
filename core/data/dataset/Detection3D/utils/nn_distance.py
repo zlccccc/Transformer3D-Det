@@ -24,7 +24,9 @@ def huber_loss(error, delta=1.0):
     0.5 * d^2 + d * (|x|-d)     if |x|>d
     Ref: https://github.com/charlesq34/frustum-pointnets/blob/master/models/model_util.py
     """
+    # print(error)
     abs_error = torch.abs(error)
+    # print(abs_error.shape, abs_error)
     # quadratic = torch.min(abs_error, torch.FloatTensor([delta]))
     quadratic = torch.clamp(abs_error, max=delta)
     linear = (abs_error - quadratic)
@@ -33,10 +35,13 @@ def huber_loss(error, delta=1.0):
 
 
 def pc_nn_distance(pc1, pc2, l1smooth=False, delta=1.0, l1=False):  # this func changed by zlc1114 at 2020/10/7
+    # print(pc1.shape, pc2.shape, ' << pc shapes')
+    # print(pc1.abs().max(), pc2.abs().max(), 'pc maximum value')
     N = pc1.shape[1]
     M = pc2.shape[1]
     pc1_expand_tile = pc1.unsqueeze(2).repeat(1,1,M,1)
     pc2_expand_tile = pc2.unsqueeze(1).repeat(1,N,1,1)
+    # print(pc1_expand_tile.shape, pc2_expand_tile.shape, '<< pc shape final')
     pc_diff = pc1_expand_tile - pc2_expand_tile
     if l1smooth:
         pc_dist = torch.sum(huber_loss(pc_diff, delta), dim=-1)  # (B,N,M)  # TODO it is not right(l1 should be sqrt)

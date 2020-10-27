@@ -28,7 +28,7 @@ MEAN_COLOR_RGB = np.array([109.8, 97.2, 83.8])
 class ScannetDetectionDataset(Dataset):
 
     def __init__(self, split_set='train', num_points=20000,
-                 use_color=False, use_height=False, augment=False, data_path=None):
+                 use_color=False, use_height=False, augment=False, data_path=None, augment_more=False):
         self.data_path = os.path.join(BASE_DIR, 'scannet_train_detection_data')
         if data_path is not None:
             self.data_path = data_path
@@ -56,6 +56,7 @@ class ScannetDetectionDataset(Dataset):
         self.use_color = use_color
         self.use_height = use_height
         self.augment = augment
+        self.augment_more = augment_more
 
     def __len__(self):
         # return 8
@@ -128,9 +129,20 @@ class ScannetDetectionDataset(Dataset):
 
             # Rotation along up-axis/Z-axis
             rot_angle = (np.random.random()*np.pi/18) - np.pi/36  # -5 ~ +5 degree
+            # rot_angle = (np.random.random()*np.pi/9) - np.pi/18  # -10 ~ +10 degree
             rot_mat = pc_util.rotz(rot_angle)
             point_cloud[:, 0:3] = np.dot(point_cloud[:, 0:3], np.transpose(rot_mat))
             target_bboxes = rotate_aligned_boxes(target_bboxes, rot_mat)
+
+            if self.augment_more:
+                # NEW: scale from 0.8 to 1.2
+                # print(rot_mat.shape, point_cloud.shape, flush=True)
+                scale = np.random.uniform(0.8, 1.2, (3, 3)) 
+                scale = scale * np.eye(3)
+                point_cloud[:, 0:3] = np.dot(point_cloud[:, 0:3], scale)
+                target_bboxes[:, 0:3] = np.dot(target_bboxes[:, 0:3], scale)
+                target_bboxes[:, 3:6] = np.dot(target_bboxes[:, 3:6], scale)
+                # print(scale, '<< scale', flush=True)
 
         # compute votes *AFTER* augmentation
         # generate votes
