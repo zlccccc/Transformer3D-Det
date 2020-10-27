@@ -158,7 +158,7 @@ def compute_box_and_sem_cls_loss(end_points, config):
     # USE GT_CENTER TO CALCULATE CENTER
     gt_center_label = torch.gather(gt_center, dim=1, index=object_assignment.unsqueeze(-1).repeat(1, 1, 3))
     dist1 = torch.norm(gt_center_label - pred_center, p=2, dim=2)
-    # dist2 = torch.sqrt(dist2 + 1e-8)
+    dist2 = torch.sqrt(dist2 + 1e-8)
     centroid_reg_loss1 = \
         torch.sum(dist1*objectness_label)/(torch.sum(objectness_label)+1e-6)
     centroid_reg_loss2 = \
