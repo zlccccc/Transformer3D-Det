@@ -20,7 +20,7 @@ class Transformer3D(nn.Module):
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
                  num_decoder_layers=6, dim_feedforward=2048, dropout=0,
                  activation="gelu", normalize_before=False,
-                 return_intermediate_dec=False, have_decoder=True):
+                 return_intermediate_dec=False, have_decoder=True, attention_type='default', deformable_type=None):
         super().__init__()
 
         encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,
@@ -31,12 +31,13 @@ class Transformer3D(nn.Module):
         self.have_decoder = have_decoder
         if have_decoder:
             decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,
-                                                    dropout, activation, normalize_before)
+                                                    dropout, activation, normalize_before, attention_type=attention_type, deformable_type=deformable_type)
             decoder_norm = nn.LayerNorm(d_model)
             self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,
                                               return_intermediate=return_intermediate_dec)
+            self.attention_type = attention_type
 
-        self._reset_parameters()
+        # self._reset_parameters()  # for fc
 
         self.d_model = d_model
         self.nhead = nhead
@@ -46,7 +47,7 @@ class Transformer3D(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, src, mask, query_embed, pos_embed, static_feat=None, src_mask=None):  #TODO ADD STATIC_FEAT(WEIGHTED SUM or fc)
+    def forward(self, src, mask, query_embed, pos_embed, static_feat=None, src_mask=None, src_position=None):  #TODO ADD STATIC_FEAT(WEIGHTED SUM or fc)
         # flatten BxNxC to NxBxC
         # print(src.shape, pos_embed.shape, query_embed.shape, '<<< initial src and query shape', mask.shape, flush=True)
         B, N, C = src.shape
@@ -67,12 +68,28 @@ class Transformer3D(nn.Module):
         if not self.have_decoder:  # TODO LOCAL ATTENTION
             return memory.permute(1, 0, 2)  # just return it
         # to get decode layer
-        query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
-        tgt = torch.zeros_like(query_embed)
-        hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
-                          pos=pos_embed, query_pos=query_embed)
-        # print(hs.transpose(1,2).shape, memory.shape, '<< final encoder and decode shape')
-        # print(memory, '<< memory')
+        if self.attention_type == 'deformable':
+            assert query_embed is None, 'deformable: query embedding should be None'
+            query_embed = torch.zeros_like(src)
+            tgt = src
+            tgt_mask = src_mask
+            # print(query_embed.shape, '<<< query embedding shape', flush=True)
+        else:  # just Add It
+            query_embed = query_embed.unsqueeze(1).repeat(1, B, 1)
+            tgt = torch.zeros_like(query_embed)
+
+        if src_position is not None:
+            src_position = src_position.permute(1, 0, 2)
+        decoder_output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_key_padding_mask=mask,
+                                      pos=pos_embed, query_pos=query_embed, src_position=src_position, tgt_position=src_position)
+        # print(hs.transpose(1,2).shape, memory.shape, '<< final encoder and decode shape', flush=True)
+        if src_position is not None:
+            hs, finpos = decoder_output
+            # print(hs.shape, memory.shape, finpos.shape, '<<< fin pos shape', flush=True)
+            # print((finpos[-1] - src_position).max(), '  <<<  finpos shift', flush=True)
+            return hs.transpose(1, 2), memory.permute(1, 0, 2), finpos.transpose(1, 2) # .view(B, N, C)
+        else:
+            hs = decoder_output
         return hs.transpose(1, 2), memory.permute(1, 0, 2)  # .view(B, N, C)
 
 
@@ -116,19 +133,25 @@ class TransformerDecoder(nn.Module):
                 tgt_key_padding_mask: Optional[Tensor] = None,
                 memory_key_padding_mask: Optional[Tensor] = None,
                 pos: Optional[Tensor] = None,
-                query_pos: Optional[Tensor] = None):
+                query_pos: Optional[Tensor] = None,
+                src_position: Optional[Tensor] = None,
+                tgt_position: Optional[Tensor] = None):
         output = tgt
 
-        intermediate = []
+        intermediate, intermediate_pos = [], []
 
         for layer in self.layers:
-            output = layer(output, memory, tgt_mask=tgt_mask,
-                           memory_mask=memory_mask,
-                           tgt_key_padding_mask=tgt_key_padding_mask,
-                           memory_key_padding_mask=memory_key_padding_mask,
-                           pos=pos, query_pos=query_pos)
+            output, nxt_position = layer(output, memory, tgt_mask=tgt_mask,
+                                         memory_mask=memory_mask,
+                                         tgt_key_padding_mask=tgt_key_padding_mask,
+                                         memory_key_padding_mask=memory_key_padding_mask,
+                                         pos=pos, query_pos=query_pos, src_position=src_position, tgt_position=tgt_position)
+            # print((tgt_position-nxt_position).abs().max(), '<< xyz, bias, from transformer')
+            # print(output.shape, '<< output shape', tgt_position.shape, '<< tgt shape', flush=True)
+            tgt_position = nxt_position
             if self.return_intermediate:
                 intermediate.append(self.norm(output))
+                intermediate_pos.append(tgt_position)
 
         if self.norm is not None:
             output = self.norm(output)
@@ -137,10 +160,27 @@ class TransformerDecoder(nn.Module):
                 intermediate.append(output)
 
         if self.return_intermediate:
-            return torch.stack(intermediate)
+            return torch.stack(intermediate), torch.stack(intermediate_pos)
 
-        return output.unsqueeze(0)
+        return output.unsqueeze(0), tgt_position.unsqueeze(0)
 
+
+def attn_with_batch_mask(layer_attn, q, k, src, src_mask, src_key_padding_mask):
+    bs, src_arr = q.shape[1], []
+    for i in range(bs):
+        key_mask, attn_mask = None, None
+        if src_key_padding_mask is not None:
+            key_mask = src_key_padding_mask[i:i+1]
+        if src_mask is not None:
+            attn_mask = src_mask[i]
+        batch_attn = layer_attn(q[:, i:i+1, :], k[:, i:i+1, :], value=src[:, i:i+1, :], attn_mask=attn_mask,
+                                    key_padding_mask=key_mask)
+        # print(batch_attn[1].sum(dim=-1))  # TODO it is okay to make a weighted sum
+        # print(batch_attn[1], attn_mask)
+        src_arr.append(batch_attn[0])
+    src2 = torch.cat(src_arr, dim=1)
+    return src2
+    
 
 class TransformerEncoderLayer(nn.Module):
 
@@ -171,18 +211,8 @@ class TransformerEncoderLayer(nn.Module):
                      pos: Optional[Tensor] = None):
         q = k = self.with_pos_embed(src, pos)
         # print(q.shape, src.shape, src_mask.shape, '<< forward post shape; todo', flush=True)
-        bs, src_arr = q.shape[1], []
-        for i in range(bs):
-            key_mask, attn_mask = None, None
-            if src_key_padding_mask is not None:
-                key_mask = src_key_padding_mask[i:i+1]
-            if src_mask is not None:
-                attn_mask = src_mask[i]
-            batch_attn = self.self_attn(q[:, i:i+1, :], k[:, i:i+1, :], value=src[:, i:i+1, :], attn_mask=attn_mask,
-                                        key_padding_mask=key_mask)
-            # print(batch_attn[1].sum(dim=-1))  # TODO it is okay to make a weighted sum
-            src_arr.append(batch_attn[0])
-        src2 = torch.cat(src_arr, dim=1)
+        src2 = attn_with_batch_mask(self.self_attn, q, k, src=src, src_mask=src_mask,
+                                    src_key_padding_mask=src_key_padding_mask)
         # src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
         #                       key_padding_mask=src_key_padding_mask)[0]
         # print(q, k, '<< forward!!')
@@ -218,13 +248,102 @@ class TransformerEncoderLayer(nn.Module):
         return self.forward_post(src, src_mask, src_key_padding_mask, pos)
 
 
+class MultiheadPositionalAttention(nn.Module):  # nearby points
+    def __init__(self, d_model, nhead, dropout, attn_type='nearby'):  # nearby; interpolation
+        super().__init__()
+        assert attn_type in ['nearby', 'interpolation', 'near_interpolation', 'input'], 'attn_type should be nearby|interpolation'
+        self.attn_type = attn_type
+        self.attention = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+    
+    def forward(self, query, key, value, attn_mask, key_padding_mask, src_position, tgt_position):
+        if self.attn_type in ['input']: # just using attn_mask from input
+            return attn_with_batch_mask(self.attention, query, key, src=value, src_mask=attn_mask,
+                                        src_key_padding_mask=key_padding_mask)
+        N, B, C = src_position.shape
+        X = src_position[None, :, :, :].repeat(N, 1, 1, 1)
+        Y = tgt_position[:, None, :, :].repeat(1, N, 1, 1)
+        dist = torch.sum((X - Y).pow(2), dim=-1)
+        dist = dist.permute(2, 0, 1)
+        # print(dist.shape, '<<< dist.shape', flush=True)
+        if self.attn_type in ['nearby']:
+            assert attn_mask is None, 'positional attn: mask should be none'
+            near_kth = 5
+            # TODO GETID and INTERPOLATION
+            # print('Using MultiheadPositionalAttention', near_kth, ' <<< near kth', flush=True)
+            # print(A.shape, B.shape, '<< mask A and B shape', flush=True)
+            # print(dist_min.shape, dist_pos.shape, ' << dist min shape', dist_pos[0, 0:2], flush=True)
+            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=1, largest=False, sorted=False)
+            src_mask = torch.zeros(B, N, N).to(dist.device) - 1e9
+            src_mask.scatter_(1, dist_pos, 0)
+            ret = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
+                                        src_key_padding_mask=key_padding_mask)
+            return ret
+        elif self.attn_type in ['interpolation']:  # similiar as pointnet
+            assert attn_mask is None, 'positional attn: mask should be none'
+            # dist_recip = 1 / (dist + 1e-8)
+            # norm = torch.sum(dist_recip, dim=1, keepdim=True)
+            # weight = dist_recip / norm
+            # print(norm.shape, weight.shape)
+            near_kth = 5
+            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=-1, largest=False, sorted=False)
+            # weight
+            dist_recip = 1 / (dist_min + 1e-8)
+            norm = torch.sum(dist_recip, dim=2, keepdim=True)
+            weight = dist_recip / norm  # B * N * near_kth
+            # src_mask
+            src_mask = torch.zeros(B, N, N).to(dist.device) - 1e9
+            src_mask.scatter_(2, dist_pos, weight.exp())
+            ret = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
+                                       src_key_padding_mask=key_padding_mask)
+            return ret
+        elif self.attn_type in ['near_interpolation']:  # similiar as pointnet
+            assert attn_mask is None, 'positional attn: mask should be none'
+            near_kth = 5
+            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=-1, largest=False, sorted=False)
+            # src_mask
+            src_mask = torch.zeros(B, N, N).to(dist.device) - 1e9
+            src_mask.scatter_(2, dist_pos, 0)
+            ret = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
+                                       src_key_padding_mask=key_padding_mask)
+            # weight
+            dist_recip = 1 / (dist_min + 1e-8)
+            norm = torch.sum(dist_recip, dim=2, keepdim=True)
+            weight = dist_recip / norm  # B * N * near_kth
+            weight = weight.permute(1, 2, 0).view(N * near_kth, B)
+            dist_pos = dist_pos.permute(1, 2, 0).view(N * near_kth, B)
+            dist_repos = torch.gather(value, 0, dist_pos.unsqueeze(-1).repeat(1, 1, value.shape[-1]))
+            more = dist_repos.mul(weight.unsqueeze(-1).repeat(1, 1, value.shape[-1]))
+            # print(weight, flush=True) # TODO
+            more = more.view(N, near_kth, B, -1)
+            more = torch.sum(more, dim=1)
+            ret = ret * 0.8 + more * 0.2
+            return ret
+        else:
+            raise NotImplementedError(self.attn_type)
+        # self.attention(query=query, key=key, value=value, attn_mask=attn_mask, key_padding_mask=key_padding_mask)
+
+
 class TransformerDecoderLayer(nn.Module):
 
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
-                 activation="relu", normalize_before=False):
+                 activation="relu", normalize_before=False, attention_type='default', deformable_type=None):
         super().__init__()
-        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.attention_type = attention_type
+        print('transformer: Using Decoder transformer type', attention_type)
+        if attention_type == 'default':
+            self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout, attn_type='input')
+            self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        elif attention_type == 'deformable':
+            self.linear_offset = nn.Linear(d_model, 3)  # center forward
+            self.linear_offset.weight.data.zero_()
+            self.linear_offset.bias.data.zero_()
+            # print(self.linear_offset.weight.data.max(), '<< linear OFFSET WIEGHT  !')
+            assert deformable_type is not None
+            src_attn_type = deformable_type
+            self.self_attn = MultiheadPositionalAttention(d_model, nhead, dropout=dropout, attn_type='input')
+            self.multihead_attn = MultiheadPositionalAttention(d_model, nhead, dropout=dropout, attn_type=src_attn_type)
+        else:
+            raise NotImplementedError(attention_type)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
@@ -249,22 +368,46 @@ class TransformerDecoderLayer(nn.Module):
                      tgt_key_padding_mask: Optional[Tensor] = None,
                      memory_key_padding_mask: Optional[Tensor] = None,
                      pos: Optional[Tensor] = None,
-                     query_pos: Optional[Tensor] = None):
-        q = k = self.with_pos_embed(tgt, query_pos)
-        tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
-                              key_padding_mask=tgt_key_padding_mask)[0]
-        tgt = tgt + self.dropout1(tgt2)
-        tgt = self.norm1(tgt)
-        tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
-                                   key=self.with_pos_embed(memory, pos),
-                                   value=memory, attn_mask=memory_mask,
-                                   key_padding_mask=memory_key_padding_mask)[0]
+                     query_pos: Optional[Tensor] = None,
+                     src_position: Optional[Tensor] = None,
+                     tgt_position: Optional[Tensor] = None):
+        if self.attention_type == 'default':
+            q = k = self.with_pos_embed(tgt, query_pos)
+            tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
+                                  key_padding_mask=tgt_key_padding_mask)[0]
+            tgt = tgt + self.dropout1(tgt2)
+            tgt = self.norm1(tgt)
+            tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
+                                       key=self.with_pos_embed(memory, pos),
+                                       value=memory, attn_mask=memory_mask,
+                                       key_padding_mask=memory_key_padding_mask)[0]
+        elif self.attention_type == 'deformable':
+            q = k = self.with_pos_embed(tgt, query_pos)
+            tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
+                                  key_padding_mask=tgt_key_padding_mask,
+                                  src_position=tgt_position,
+                                  tgt_position=tgt_position)[0]
+            tgt = tgt + self.dropout1(tgt2)
+            tgt = self.norm1(tgt)
+            # TODO src_position_attention checking
+            offset = self.linear_offset(tgt)
+            # print(self.linear_offset.weight.data.max(), self.linear_offset.bias.data.max(), ' << linear_offset shape max')
+            # print(offset.shape, tgt_position.shape, offset.max(), '<< offset shape', flush=True)
+            tgt_position = tgt_position + offset
+            tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
+                                       key=self.with_pos_embed(memory, pos),
+                                       value=memory, attn_mask=memory_mask,
+                                       key_padding_mask=memory_key_padding_mask,
+                                       src_position=src_position,
+                                       tgt_position=tgt_position)[0]
+        else:
+            raise NotImplementedError(self.attention_type)
         tgt = tgt + self.dropout2(tgt2)
         tgt = self.norm2(tgt)
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))
         tgt = tgt + self.dropout3(tgt2)
         tgt = self.norm3(tgt)
-        return tgt
+        return tgt, tgt_position
 
     def forward_pre(self, tgt, memory,
                     tgt_mask: Optional[Tensor] = None,
@@ -295,12 +438,15 @@ class TransformerDecoderLayer(nn.Module):
                 tgt_key_padding_mask: Optional[Tensor] = None,
                 memory_key_padding_mask: Optional[Tensor] = None,
                 pos: Optional[Tensor] = None,
-                query_pos: Optional[Tensor] = None):
+                query_pos: Optional[Tensor] = None,
+                src_position: Optional[Tensor] = None,
+                tgt_position: Optional[Tensor] = None):
         if self.normalize_before:
+            raise NotImplementedError('todo: detr - decoder - normalize_before (wrong when normalize_before_with_tgt_position_encoding)')
             return self.forward_pre(tgt, memory, tgt_mask, memory_mask,
-                                    tgt_key_padding_mask, memory_key_padding_mask, pos, query_pos)
+                                    tgt_key_padding_mask, memory_key_padding_mask, pos, query_pos, src_position, tgt_position)
         return self.forward_post(tgt, memory, tgt_mask, memory_mask,
-                                 tgt_key_padding_mask, memory_key_padding_mask, pos, query_pos)
+                                 tgt_key_padding_mask, memory_key_padding_mask, pos, query_pos, src_position, tgt_position)
 
 
 def _get_clones(module, N):
@@ -329,8 +475,22 @@ def build_transformer(args):
             dim_feedforward=args.dim_feedforward,
             num_encoder_layers=args.enc_layers,
             normalize_before=args.pre_norm,
-            return_intermediate_dec=True,
+            return_intermediate_dec=False,
             have_decoder=False,
+        )
+    elif transformer_type == 'deformable':
+        return Transformer3D(
+            d_model=args.hidden_dim,
+            dropout=args.dropout,
+            nhead=args.nheads,
+            dim_feedforward=args.dim_feedforward,
+            num_encoder_layers=args.enc_layers,
+            num_decoder_layers=args.dec_layers,
+            normalize_before=args.pre_norm,
+            return_intermediate_dec=True,
+            have_decoder=True,  # using input position
+            attention_type='deformable',
+            deformable_type=args.get('deformable_type','nearby')
         )
     else:
         raise NotImplementedError(transformer_type)

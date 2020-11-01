@@ -93,14 +93,14 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
             # print('mask_type: get nearest kth', near_kth, flush=True)
             mask = None
             # mask = torch.zeros(B, N).bool().to(xyz.device)
-            src_mask = torch.ones(B, N, N).bool().to(xyz.device)
+            src_mask = torch.zeros(B, N, N).to(xyz.device) - 1e9
             A = xyz[:, None, :, :].repeat(1, N, 1, 1)
             B = xyz[:, :, None, :].repeat(1, 1, N, 1)
             # print(A.shape, B.shape, '<< mask A and B shape', flush=True)
             dist = torch.sum((A - B).pow(2), dim=-1)
-            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=-1, largest=False, sorted=False)
+            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=1, largest=False, sorted=False)
             # print(dist_min.shape, dist_pos.shape, ' << dist min shape', flush=True)
-            src_mask.scatter_(2, dist_pos, False)
+            src_mask.scatter_(1, dist_pos, 0)
         else:
             raise NotImplementedError(self.mask_type)
         # print(mask, ' <<< mask')
@@ -116,14 +116,14 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         query_embd_weight = self.query_embed.weight if self.query_embed is not None else None
 
         if self.weighted_input:  #TODO doit
-            value = self.transformer(features, mask, query_embd_weight, pos_embd, xyz, src_mask=src_mask)
+            value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask, src_position=xyz)
         else:
             value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask)
 
         # return: dec_layer * B * Query * C
-        if 'dec' in self.transformer_type:
+        if 'dec' in self.transformer_type or self.transformer_type == 'deformable':
             hs = value[0]  # features_output
-        elif self.transformer_type == 'enc':  # TODO THIS IS NOT RIGHT! LAYER TO BE DONE
+        elif self.transformer_type in ['enc']:  # TODO THIS IS NOT RIGHT! LAYER TO BE DONE
             hs = value
         else:
             raise NotImplementedError(self.transformer_type)
@@ -132,14 +132,15 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         outputs_coord = self.bbox_embed(hs)
         # outputs_coord = outputs_coord.sigmoid()
         # print(outputs_class.shape, outputs_coord.shape, 'output coord and class')
-        if 'dec' in self.transformer_type:
+        if 'dec' in self.transformer_type or self.transformer_type == 'deformable':
             output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}  # final
             if self.aux_loss:
                 output['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
 
             if self.weighted_input: # sum with attention weight (just for output!)
                 weighted_xyz = value[2]  # just weighted
-                output['transformer_weighted_xyz'] = weighted_xyz  # just sum it
+                # print(weighted_xyz.shape, '<<< weighted xyz value!', flush=True)  # update: it is right!
+                output['transformer_weighted_xyz'] = weighted_xyz[-1]  # just sum it
         else:
             output = {'pred_logits': outputs_class, 'pred_boxes': outputs_coord}  # final
             

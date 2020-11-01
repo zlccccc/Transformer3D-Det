@@ -48,7 +48,7 @@ train:
         name: iteration
         max_iter: 120000
         # test and save
-        test_freq: 3000
+        test_freq: 6000
         save_freq: 120000
         log_freq: 10
         snapshot_save_path: snapshot

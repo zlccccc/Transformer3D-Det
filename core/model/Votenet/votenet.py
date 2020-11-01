@@ -80,8 +80,8 @@ class votenet(base_module):
             self.criterion = get_loss
         else:
             raise NotImplementedError(config.net_type)
-        self.init_relu = 'relu'
-        self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
+        # self.init_relu = 'relu'
+        # self.init_params(nn.BatchNorm2d, init_type='kaiming_normal')
 
     def _forward(self, input):
         return self.net(input)

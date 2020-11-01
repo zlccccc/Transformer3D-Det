@@ -42,7 +42,14 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     if center_with_bias:
         # print('CENTER ADDING VOTE-XYZ', flush=True)
         base_xyz = end_points['aggregated_vote_xyz'] # (batch_size, num_proposal, 3)
-        center = center + base_xyz  # residual
+        # print('Using Center With Bias', output_dict.keys())
+        if 'transformer_weighted_xyz' in output_dict.keys():
+            transformer_xyz = output_dict['transformer_weighted_xyz']
+            # print(transformer_xyz[0, :4], base_xyz[0, :4], 'from vote helper', flush=True)
+            # print(center.shape, transformer_xyz.shape)
+            center = center + transformer_xyz
+        else:
+            center = center + base_xyz  # residual
     else:
         raise NotImplementedError('center without bias(for decoder): not Implemented')
     end_points['center'] = center
