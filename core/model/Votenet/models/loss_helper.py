@@ -70,7 +70,7 @@ def compute_vote_loss(end_points, vote_xyz):
 def compute_cascade_vote_loss(end_points):
     vote_stage = end_points['vote_stage']
     vote_loss = torch.zeros(1).cuda()
-    if vote_stage >= 1:
+    if vote_stage >= 1:  # just 1-stage loss
         end_points['vote_loss_stage_1'] = compute_vote_loss(end_points, end_points['vote_xyz_stage_1'])
         vote_loss += end_points['vote_loss_stage_1']
     if vote_stage >= 2:
@@ -230,6 +230,26 @@ def get_loss(end_points, config):
         loss: pytorch scalar tensor
         end_points: dict
     """
+    # Box loss and sem cls loss
+    if config.loss_weight is not None:
+        # print('using loss weight from config', config.loss_weight, flush=True)
+        loss_weight_dict = config.loss_weight.loss_weight.copy()
+    else:
+        loss_weight_dict = {
+            'center_loss': 1,
+            'heading_class_loss': 0.1,
+            'heading_residual_loss': 1,
+            'size_class_loss': 0.1,
+            'size_residual_loss': 1,
+
+            'vote_loss': 1,
+            'objectness_loss': 0.5,
+            'box_loss': 1,
+            'sem_cls_loss': 0.1,
+
+            'all_weight': 10,
+        }
+        # print('Using Defalut loss_weight', loss_weight_dict, '<< loss_weight dict', flush=True)
 
     # Vote loss
     vote_loss = compute_cascade_vote_loss(end_points)
@@ -257,12 +277,21 @@ def get_loss(end_points, config):
     end_points['size_cls_loss'] = size_cls_loss
     end_points['size_reg_loss'] = size_reg_loss
     end_points['sem_cls_loss'] = sem_cls_loss
-    box_loss = center_loss + 0.1*heading_cls_loss + heading_reg_loss + 0.1*size_cls_loss + size_reg_loss
+    # box_loss = center_loss + 0.1*heading_cls_loss + heading_reg_loss + 0.1*size_cls_loss + size_reg_loss
+    box_loss = center_loss * loss_weight_dict.get('center_loss', 1) \
+             + heading_cls_loss * loss_weight_dict.get('heading_class_loss', 0.1)\
+             + heading_reg_loss * loss_weight_dict.get('heading_residual_loss', 1) \
+             + size_cls_loss * loss_weight_dict.get('size_class_loss', 0.1) \
+             + size_reg_loss * loss_weight_dict.get('size_residual_loss', 1)
     end_points['box_loss'] = box_loss
 
     # Final loss function
-    loss = vote_loss + 0.5*objectness_loss + box_loss + 0.1*sem_cls_loss
-    loss *= 10
+    # loss = vote_loss + 0.5*objectness_loss + box_loss + 0.1*sem_cls_loss
+    loss = vote_loss * loss_weight_dict.get('vote_loss', 1) + \
+           objectness_loss * loss_weight_dict.get('objectness_loss', 0.5) + \
+           box_loss * loss_weight_dict.get('box_loss', 1) + \
+           sem_cls_loss* loss_weight_dict.get('sem_cls_loss', 0.1)
+    loss *= loss_weight_dict.get('all_weight', 10)
     end_points['loss'] = loss
 
     # --------------------------------------------
