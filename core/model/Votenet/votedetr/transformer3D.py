@@ -7,6 +7,7 @@ Copy-paste from torch.nn.Transformer with modifications:
     * extra LN at the end of encoder is removed
     * decoder returns a stack of activations from all decoding layers
 """
+import math
 import copy
 from typing import Optional, List
 
@@ -68,7 +69,7 @@ class Transformer3D(nn.Module):
         if not self.have_decoder:  # TODO LOCAL ATTENTION
             return memory.permute(1, 0, 2)  # just return it
         # to get decode layer
-        if self.attention_type == 'deformable':
+        if self.attention_type.split(';')[-1] == 'deformable':
             assert query_embed is None, 'deformable: query embedding should be None'
             query_embed = torch.zeros_like(src)
             tgt = src
@@ -166,7 +167,7 @@ class TransformerDecoder(nn.Module):
 
 
 def attn_with_batch_mask(layer_attn, q, k, src, src_mask, src_key_padding_mask):
-    bs, src_arr = q.shape[1], []
+    bs, src_arr, attn_arr = q.shape[1], [], []
     for i in range(bs):
         key_mask, attn_mask = None, None
         if src_key_padding_mask is not None:
@@ -178,8 +179,10 @@ def attn_with_batch_mask(layer_attn, q, k, src, src_mask, src_key_padding_mask):
         # print(batch_attn[1].sum(dim=-1))  # TODO it is okay to make a weighted sum
         # print(batch_attn[1], attn_mask)
         src_arr.append(batch_attn[0])
+        attn_arr.append(batch_attn[1])
     src2 = torch.cat(src_arr, dim=1)
-    return src2
+    attn = torch.cat(attn_arr, dim=0)
+    return src2, attn
     
 
 class TransformerEncoderLayer(nn.Module):
@@ -251,7 +254,7 @@ class TransformerEncoderLayer(nn.Module):
 class MultiheadPositionalAttention(nn.Module):  # nearby points
     def __init__(self, d_model, nhead, dropout, attn_type='nearby'):  # nearby; interpolation
         super().__init__()
-        assert attn_type in ['nearby', 'interpolation', 'near_interpolation', 'input'], 'attn_type should be nearby|interpolation'
+        assert attn_type in ['nearby', 'interpolation', 'interpolation_10', 'near_interpolation', 'input', 'interpolation_xyz', 'interpolation_xyz_0.1'], 'attn_type should be nearby|interpolation'
         self.attn_type = attn_type
         self.attention = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
     
@@ -278,13 +281,16 @@ class MultiheadPositionalAttention(nn.Module):  # nearby points
             ret = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
                                         src_key_padding_mask=key_padding_mask)
             return ret
-        elif self.attn_type in ['interpolation']:  # similiar as pointnet
+        elif self.attn_type in ['interpolation', 'interpolation_10']:  # similiar as pointnet
             assert attn_mask is None, 'positional attn: mask should be none'
             # dist_recip = 1 / (dist + 1e-8)
             # norm = torch.sum(dist_recip, dim=1, keepdim=True)
             # weight = dist_recip / norm
             # print(norm.shape, weight.shape)
             near_kth = 5
+            kth_split = self.attn_type.split('_')
+            if len(kth_split) == 2:
+                near_kth = int(kth_split[-1])
             dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=-1, largest=False, sorted=False)
             # weight
             dist_recip = 1 / (dist_min + 1e-8)
@@ -296,6 +302,30 @@ class MultiheadPositionalAttention(nn.Module):  # nearby points
             ret = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
                                        src_key_padding_mask=key_padding_mask)
             return ret
+        elif self.attn_type in ['interpolation_xyz', 'interpolation_xyz_0.1']:  # similiar as pointnet
+            assert attn_mask is None, 'positional attn: mask should be none'
+            near_kth = 5
+            scale = 0.5
+            scale_split = self.attn_type.split('_')
+            if len(scale_split) == 3:
+                near_scale = float(scale_split[-1])
+            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=-1, largest=False, sorted=False)
+            # weight
+            dist_recip = 1 / (dist_min + 1e-8)
+            norm = torch.sum(dist_recip, dim=2, keepdim=True)
+            weight = dist_recip / norm  # B * N * near_kth
+            # src_mask
+            src_mask = torch.zeros(B, N, N).to(dist.device) - 1e9
+            src_mask.scatter_(2, dist_pos, weight.exp())
+            attn = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
+                                       src_key_padding_mask=key_padding_mask)
+            attn_map = attn[-1]
+            # print(attn_map.shape, query.shape, key.shape, value.shape, src_position.shape, '<< shape!!', flush=True)
+            src_xyz_attn = torch.bmm(src_position.permute(1, 2, 0), attn_map)
+            src_xyz_attn = src_xyz_attn.permute(2, 0, 1)
+            tgt_position = tgt_position * (1 - scale) + src_xyz_attn * scale
+            return attn[0], attn[1], tgt_position
+            
         elif self.attn_type in ['near_interpolation']:  # similiar as pointnet
             assert attn_mask is None, 'positional attn: mask should be none'
             near_kth = 5
@@ -316,7 +346,7 @@ class MultiheadPositionalAttention(nn.Module):  # nearby points
             # print(weight, flush=True) # TODO
             more = more.view(N, near_kth, B, -1)
             more = torch.sum(more, dim=1)
-            ret = ret * 0.8 + more * 0.2
+            ret[0] = ret[0] * 0.8 + more * 0.2
             return ret
         else:
             raise NotImplementedError(self.attn_type)
@@ -328,19 +358,26 @@ class TransformerDecoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False, attention_type='default', deformable_type=None):
         super().__init__()
+        attn_split = attention_type.split(';')
+        if len(attn_split) == 1:
+            attention_input = 'input'
+        else:
+            attention_input = attn_split[0]
+            assert len(attn_split) == 2, 'len(attention_type) should be 1 or 2'
+        attention_type = attn_split[-1]
         self.attention_type = attention_type
-        print('transformer: Using Decoder transformer type', attention_type)
+        print('transformer: Using Decoder transformer type', attention_input, attention_type)
         if attention_type == 'default':
-            self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout, attn_type='input')
+            self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout, attn_type=attention_input)
             self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
-        elif attention_type == 'deformable':
+        elif attention_type.split(';')[-1] == 'deformable':
             self.linear_offset = nn.Linear(d_model, 3)  # center forward
             self.linear_offset.weight.data.zero_()
             self.linear_offset.bias.data.zero_()
             # print(self.linear_offset.weight.data.max(), '<< linear OFFSET WIEGHT  !')
             assert deformable_type is not None
             src_attn_type = deformable_type
-            self.self_attn = MultiheadPositionalAttention(d_model, nhead, dropout=dropout, attn_type='input')
+            self.self_attn = MultiheadPositionalAttention(d_model, nhead, dropout=dropout, attn_type=attention_input)
             self.multihead_attn = MultiheadPositionalAttention(d_model, nhead, dropout=dropout, attn_type=src_attn_type)
         else:
             raise NotImplementedError(attention_type)
@@ -381,12 +418,18 @@ class TransformerDecoderLayer(nn.Module):
                                        key=self.with_pos_embed(memory, pos),
                                        value=memory, attn_mask=memory_mask,
                                        key_padding_mask=memory_key_padding_mask)[0]
-        elif self.attention_type == 'deformable':
+        elif self.attention_type.split(';')[-1] == 'deformable':
             q = k = self.with_pos_embed(tgt, query_pos)
-            tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
+            attn = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
                                   key_padding_mask=tgt_key_padding_mask,
                                   src_position=tgt_position,
-                                  tgt_position=tgt_position)[0]
+                                  tgt_position=tgt_position)
+            tgt2 = attn[0]
+            if len(attn) == 3:
+                # print('attn from output! TODO')
+                tgt_position = attn[2]
+            else:
+                assert len(attn) == 2, 'attn len should not be 2 or 3'
             tgt = tgt + self.dropout1(tgt2)
             tgt = self.norm1(tgt)
             # TODO src_position_attention checking
@@ -394,12 +437,19 @@ class TransformerDecoderLayer(nn.Module):
             # print(self.linear_offset.weight.data.max(), self.linear_offset.bias.data.max(), ' << linear_offset shape max')
             # print(offset.shape, tgt_position.shape, offset.max(), '<< offset shape', flush=True)
             tgt_position = tgt_position + offset
-            tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
+            attn = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
                                        key=self.with_pos_embed(memory, pos),
                                        value=memory, attn_mask=memory_mask,
                                        key_padding_mask=memory_key_padding_mask,
                                        src_position=src_position,
-                                       tgt_position=tgt_position)[0]
+                                       tgt_position=tgt_position)
+            tgt2 = attn[0]
+            # print(tgt2, '<< tgt2')
+            if len(attn) == 3:
+                # print('attn from input! TODO')
+                tgt_position = attn[2]
+            else:
+                assert len(attn) == 2, 'attn len should not be 2 or 3'
         else:
             raise NotImplementedError(self.attention_type)
         tgt = tgt + self.dropout2(tgt2)
@@ -478,7 +528,7 @@ def build_transformer(args):
             return_intermediate_dec=False,
             have_decoder=False,
         )
-    elif transformer_type == 'deformable':
+    elif transformer_type.split(';')[-1] == 'deformable':
         return Transformer3D(
             d_model=args.hidden_dim,
             dropout=args.dropout,
@@ -489,12 +539,14 @@ def build_transformer(args):
             normalize_before=args.pre_norm,
             return_intermediate_dec=True,
             have_decoder=True,  # using input position
-            attention_type='deformable',
+            attention_type=transformer_type,
             deformable_type=args.get('deformable_type','nearby')
         )
     else:
         raise NotImplementedError(transformer_type)
 
+def gelu(x):    
+    return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
 
 
 def _get_activation_fn(activation):
@@ -504,6 +556,7 @@ def _get_activation_fn(activation):
         return F.relu
     if activation == "gelu":
         return F.gelu
+        return gelu
     if activation == "glu":
         return F.glu
     raise RuntimeError(F"activation should be relu/gelu, not {activation}.")

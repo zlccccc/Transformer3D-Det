@@ -26,6 +26,7 @@ class SharedMLP(nn.Sequential):
         if activation is None:
             none_activate = True
             print('Change: Pointnet Shared MLP Using PReLU')
+            pass
         for i in range(len(args) - 1):
             if none_activate:
                 activation = nn.PReLU(args[i + 1])

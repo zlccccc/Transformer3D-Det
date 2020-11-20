@@ -2,6 +2,7 @@ from ..subfile_init import sub_model_entry
 
 module_dict = {
     'votenet': 'votenet.votenet',
+    'scanrefer': 'voterefer.refernet'
 }
 
 

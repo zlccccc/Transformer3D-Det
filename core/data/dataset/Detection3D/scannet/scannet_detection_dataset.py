@@ -27,8 +27,8 @@ MEAN_COLOR_RGB = np.array([109.8, 97.2, 83.8])
 
 class ScannetDetectionDataset(Dataset):
 
-    def __init__(self, split_set='train', num_points=20000,
-                 use_color=False, use_height=False, augment=False, data_path=None, augment_more=False):
+    def __init__(self, split_set='train', num_points=40000, #20000,
+                 use_color=False, use_height=False, augment=False, data_path=None, augment_more=False, augment_shift=False):
         self.data_path = os.path.join(BASE_DIR, 'scannet_train_detection_data')
         if data_path is not None:
             self.data_path = data_path
@@ -57,6 +57,7 @@ class ScannetDetectionDataset(Dataset):
         self.use_height = use_height
         self.augment = augment
         self.augment_more = augment_more
+        self.augment_shift = augment_shift
 
     def __len__(self):
         # return 8
@@ -134,15 +135,25 @@ class ScannetDetectionDataset(Dataset):
             point_cloud[:, 0:3] = np.dot(point_cloud[:, 0:3], np.transpose(rot_mat))
             target_bboxes = rotate_aligned_boxes(target_bboxes, rot_mat)
 
-            if self.augment_more:
+            if self.augment_more: # same as HGNet
+                # print('Warning! Dont Use Extra Augmentation!(votenet didnot use it)', flush=True)
                 # NEW: scale from 0.8 to 1.2
                 # print(rot_mat.shape, point_cloud.shape, flush=True)
-                scale = np.random.uniform(0.8, 1.2, (3, 3)) 
+                scale = np.random.uniform(0.8, 1.2, (3, 3))
                 scale = scale * np.eye(3)
+                # print(scale, '<< scale matrix')
                 point_cloud[:, 0:3] = np.dot(point_cloud[:, 0:3], scale)
+                if self.use_height:
+                    point_cloud[:, 3] = point_cloud[:, 3] * float(scale[2, 2])
                 target_bboxes[:, 0:3] = np.dot(target_bboxes[:, 0:3], scale)
                 target_bboxes[:, 3:6] = np.dot(target_bboxes[:, 3:6], scale)
                 # print(scale, '<< scale', flush=True)
+            if self.augment_shift:
+                shift = np.random.uniform(-0.3, 0.3, (1, 3))
+                point_cloud[:, 0:3] += shift
+                target_bboxes[:, 0:3] += shift
+                
+                # print(shift, '<< shift', flush=True)
 
         # compute votes *AFTER* augmentation
         # generate votes
@@ -184,6 +195,7 @@ class ScannetDetectionDataset(Dataset):
         ret_dict['vote_label'] = point_votes.astype(np.float32)
         ret_dict['vote_label_mask'] = point_votes_mask.astype(np.int64)
         ret_dict['scan_idx'] = np.array(idx).astype(np.int64)
+        ret_dict['scan_name'] = scan_name
         ret_dict['pcl_color'] = pcl_color
         # for key, value in ret_dict.items():
         #     print(key, value.shape)

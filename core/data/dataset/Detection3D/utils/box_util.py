@@ -14,6 +14,13 @@ import numpy as np
 from scipy.spatial import ConvexHull
 
 
+def in_hull(p, hull):
+    from scipy.spatial import Delaunay
+    if not isinstance(hull,Delaunay):
+        hull = Delaunay(hull)
+    return hull.find_simplex(p)>=0
+
+
 def extract_pc_in_box3d(pc, box3d):
     ''' pc: (N,3), box3d: (8,3) '''
     box3d_roi_inds = in_hull(pc[:,0:3], box3d)

@@ -12,5 +12,8 @@ def get_optimizer(config, parameters):
         return optim.SGD(params=parameters, **config)
     elif name == "AdamW":
         return optim.AdamW(params=parameters, **config)
+    elif name == 'myAdamW':
+        from .AdamW import AdamW
+        return AdamW(params=parameters, **config)
     else:
         raise NotImplementedError(name)

@@ -262,7 +262,7 @@ class APCalculator(object):
             self.pred_map_cls[self.scan_cnt] = batch_pred_map_cls[i] 
             self.scan_cnt += 1
     
-    def compute_metrics(self):
+    def compute_metrics(self, return_all=False):
         """ Use accumulated predictions and groundtruths to compute Average Precision.
         """
         rec, prec, ap = eval_det_multiprocessing(self.pred_map_cls, self.gt_map_cls, ovthresh=self.ap_iou_thresh, get_iou_func=get_iou_obb)
@@ -281,6 +281,9 @@ class APCalculator(object):
                 ret_dict['%s Recall'%(clsname)] = 0
                 rec_list.append(0)
         ret_dict['AR'] = np.mean(rec_list)
+        if return_all:
+            ret_dict['mAP_all'] = ap.values()
+            ret_dict['AR_all'] = rec_list
         return ret_dict
 
     def reset(self):

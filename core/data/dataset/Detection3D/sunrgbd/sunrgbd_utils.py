@@ -211,12 +211,6 @@ def random_shift_box2d(box2d, shift_ratio=0.1):
     w2 = w*(1+np.random.random()*2*r-r) # 0.9 to 1.1
     return np.array([cx2-w2/2.0, cy2-h2/2.0, cx2+w2/2.0, cy2+h2/2.0])
  
-def in_hull(p, hull):
-    from scipy.spatial import Delaunay
-    if not isinstance(hull,Delaunay):
-        hull = Delaunay(hull)
-    return hull.find_simplex(p)>=0
-
 
 def my_compute_box_3d(center, size, heading_angle):
     R = rotz(-1*heading_angle)

@@ -85,7 +85,7 @@ def rotate_aligned_boxes(input_boxes, rot_mat):
     
     
     new_dx = 2.0*np.max(new_x, 1)
-    new_dy = 2.0*np.max(new_y, 1)    
+    new_dy = 2.0*np.max(new_y, 1)
     new_lengths = np.stack((new_dx, new_dy, lengths[:,2]), axis=1)
                   
     return np.concatenate([new_centers, new_lengths], axis=1)

@@ -86,7 +86,7 @@ class votenet(base_module):
     def _forward(self, input):
         return self.net(input)
 
-    def calculate_loss(self, input, output):
+    def calculate_loss(self, input, output, direct_return=False):
         for key in input:
             assert(key not in output)
             output[key] = input[key]
@@ -97,6 +97,8 @@ class votenet(base_module):
             #     print(key, value)
         # exit()
         loss, output = self.criterion(output, self.DATASET_CONFIG)
+        if direct_return:
+            return output
         fin_out = {}
         for key, value in output.items():
             # if isinstance(value, torch.Tensor):
@@ -125,7 +127,7 @@ class votenet(base_module):
         self.ap_n_count = 0
 
     # TODO
-    def calculate_error(self, input, output):
+    def calculate_error(self, input, output, direct_return=False):
         for key in input:
             assert(key not in output)
             output[key] = input[key]
@@ -151,6 +153,8 @@ class votenet(base_module):
         fin_out['n_count'] = 1
         # TODO: error calculate not right (should not mean in batch)
         # fin_out['n_count'] = 1
+        if direct_return:
+            return output
         return fin_out
 
     def final_error(self, input, output):  # more infomation
@@ -169,3 +173,31 @@ class votenet(base_module):
         for key in metrics_dict_25:
             print('eval %s: %f' % (key, metrics_dict_25[key]), flush=True)
         return output
+
+
+    def save_dataset(self, dataloader, loggers):
+        import os
+        from .models.dump_helper import dump_results
+        from core.runner.runner_utils.utils import transform_input
+        path = os.path.join(os.getcwd(), 'result')
+        self.initialize_error()
+        self.val_mode()
+        idx = 0
+        for data in dataloader:
+            # print(data.keys())
+            data = transform_input(data)
+            with torch.no_grad():
+                self.initialize_error()
+                output = self._forward(data)
+                output = self.calculate_error(data, output, True)
+                # print(data.keys(), '<< save data keys')
+                metric_dict = self.ap_calculator_50.compute_metrics(return_all=True)
+                # print(metric_dict['mAP_all'], '<< metric dict values -- mAP')
+                # print(metric_dict['AR_all'], '<< metric dict values -- AR')
+                output['mAP'] = metric_dict['mAP_all']
+                output['AR'] = metric_dict['AR_all']
+                dump_results(output, path, self.DATASET_CONFIG)
+
+            # print('save-eval one batch; break')
+            # break
+        pass

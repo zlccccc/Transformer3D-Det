@@ -10,6 +10,8 @@ def transform_input(input, inside_name='input'):
             input = input.float()  # tofloat
         if torch.cuda.is_available:
             input = input.cuda()  # tocuda
+    elif isinstance(input, str):
+        pass
     elif isinstance(input, dict):
         for key in input.keys():
             input[key] = transform_input(input[key], inside_name + '.' + key)

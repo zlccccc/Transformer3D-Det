@@ -12,13 +12,18 @@ def testmodel(model, loader, loggers, test_freq, testset_name, last_iter):  # la
     # model = model.train()
     if hasattr(model, 'initialize_error'):
         model.initialize_error()
+    if hasattr(model, 'individual_tester'):
+        print('Using Invidiual Tester', flush=True)
+        with torch.no_grad():
+            error = model.individual_tester(loader, transform_input, test_freq)
+        return error, 1.
     for it, sample in enumerate(loader):
         sample = transform_input(sample)
         with torch.no_grad():  # no tracking
             output = model(sample)
             if it == len(loader) - 1 and hasattr(model, 'final_error'):
                 output = model.final_error(sample, output)
-        # mutli-batch; for data-parallel-model use
+            # mutli-batch; for data-parallel-model use
             if isinstance(model, torch.nn.DataParallel):
                 for key, value in output.items():
                     if 'error' in key or 'n_count' == key:

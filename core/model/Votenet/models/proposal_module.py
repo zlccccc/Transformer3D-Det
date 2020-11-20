@@ -102,6 +102,7 @@ class ProposalModule(nn.Module):
             log_string('Unknown sampling strategy: %s. Exiting!'%(self.sampling))
             exit()
         end_points['aggregated_vote_xyz'] = xyz # (batch_size, num_proposal, 3)
+        end_points['aggregated_vote_features'] = features.permute(0, 2, 1).contiguous() # (batch_size, num_proposal, 128)
         end_points['aggregated_vote_inds'] = sample_inds # (batch_size, num_proposal,) # should be 0,1,2,...,num_proposal
 
         # --------- PROPOSAL GENERATION ---------

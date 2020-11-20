@@ -9,13 +9,10 @@ from torch import nn
 # from util import box_ops
 import os
 import sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-sys.path.append(BASE_DIR)
-# from .backbone import build_backbone
-# from .matcher import build_matcher
-# from .segmentation import (DETRsegm, PostProcessPanoptic, PostProcessSegm,
-#                            dice_loss, sigmoid_focal_loss)
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# ROOT_DIR = os.path.dirname(BASE_DIR)
+# sys.path.append(BASE_DIR)
+
 from transformer3D import build_transformer
 from position_encoding import build_position_encoding
 # from .transformer3D import build_transformer
@@ -121,7 +118,7 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
             value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask)
 
         # return: dec_layer * B * Query * C
-        if 'dec' in self.transformer_type or self.transformer_type == 'deformable':
+        if 'dec' in self.transformer_type or self.transformer_type.split(';')[-1] == 'deformable':
             hs = value[0]  # features_output
         elif self.transformer_type in ['enc']:  # TODO THIS IS NOT RIGHT! LAYER TO BE DONE
             hs = value
@@ -132,7 +129,7 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         outputs_coord = self.bbox_embed(hs)
         # outputs_coord = outputs_coord.sigmoid()
         # print(outputs_class.shape, outputs_coord.shape, 'output coord and class')
-        if 'dec' in self.transformer_type or self.transformer_type == 'deformable':
+        if 'dec' in self.transformer_type or self.transformer_type.split(';')[-1] == 'deformable':
             output = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}  # final
             if self.aux_loss:
                 output['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
@@ -140,13 +137,14 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
             if self.weighted_input: # sum with attention weight (just for output!)
                 weighted_xyz = value[2]  # just weighted
                 # print(weighted_xyz.shape, '<<< weighted xyz value!', flush=True)  # update: it is right!
+                output['transformer_weighted_xyz_all'] = weighted_xyz
                 output['transformer_weighted_xyz'] = weighted_xyz[-1]  # just sum it
         else:
             output = {'pred_logits': outputs_class, 'pred_boxes': outputs_coord}  # final
             
         return output
 
-    @torch.jit.unused
+    # @torch.jit.unused
     def _set_aux_loss(self, outputs_class, outputs_coord):
         # this is a workaround to make torchscript happy, as torchscript
         # doesn't support dictionary with non-homogeneous values, such

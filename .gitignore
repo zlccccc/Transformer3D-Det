@@ -17,3 +17,4 @@ log*
 *.egg
 try*
 events*
+result

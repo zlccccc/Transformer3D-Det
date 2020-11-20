@@ -1,0 +1,88 @@
+common:
+    model:
+        name: votenet
+        task_type: Scannetv2
+        net_type: detr
+        # net_type: votenet
+        loss_type: NMS
+        num_input_channel: 0
+        num_target: 256
+        vote_factor: 1
+        cluster_sampling: vote_fps
+        # cluster_sampling: vote_fps
+        transformer:  # just for transformer
+            mask: near_5
+            weighted_input: True
+            transformer_type: deformable
+            deformable_type: interpolation
+            position_embedding: none
+            input_dim: 0
+            enc_layers: 0
+            dec_layers: 4
+            dim_feedforward: 2048
+            hidden_dim: 288
+            dropout: 0.2
+            nheads: 8
+            pre_norm: False
+    logs:
+        base_logger:
+            path: log/log.txt
+        tensorboard_logger:
+            path: log
+    snapshot:
+        save_path: snapshot
+    load:
+        load: False
+        path: ./ckpt_best_model.pth.tar
+        type: recover
+train:
+    batch_size: 8
+    workers: 4
+    dataset:
+        name: Scannetv2
+        split_set: train
+        # data_path: C:\Users\ZLC\Desktop\pycodes\data\scannet_train_detection_data
+        # data_path: /data1/zhaolichen/data/scannet_train_detection_data
+        data_path: /mnt/lustre/liujie4/big/scannet_train_detection_data
+        augment: True
+        # use_color: True
+        # use_height: True  # use it as feature
+        augment_more: True
+    optimizer:
+        name: AdamW
+        betas: [0.9, 0.999]
+        eps: 0.00000001
+        weight_decay: 0.0001
+    lr_scheduler:
+        type: cosine
+        T_max: 150000
+        base_lr: 0.005
+        eta_min: 0.00001
+    transform: None # TODO
+    runner:
+        name: iteration
+        max_iter: 150000
+        # test and save
+        # test_freq: 1600
+        test_freq: 1000
+        save_freq: 150000
+        log_freq: 10
+        snapshot_save_path: snapshot
+    params_weight_dict:
+        detr:  # other: default
+            lr: 0.0001
+test:
+    batch_size: 8
+    # batch_size: 1
+    workers: 4
+    dataset:
+        valset:
+            name: Scannetv2
+            split_set: val
+            # split_set: train
+            # data_path: C:\Users\ZLC\Desktop\pycodes\data\scannet_train_detection_data
+            # data_path: /data1/zhaolichen/data/scannet_train_detection_data
+            data_path: /mnt/lustre/liujie4/big/scannet_train_detection_data
+            num_points: 20000
+            # use_color: True
+            # use_height: True  # use it as feature

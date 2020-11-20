@@ -44,6 +44,7 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
         base_xyz = end_points['aggregated_vote_xyz'] # (batch_size, num_proposal, 3)
         # print('Using Center With Bias', output_dict.keys())
         if 'transformer_weighted_xyz' in output_dict.keys():
+            end_points['transformer_weighted_xyz_all'] = output_dict['transformer_weighted_xyz_all']  # just for visualization
             transformer_xyz = output_dict['transformer_weighted_xyz']
             # print(transformer_xyz[0, :4], base_xyz[0, :4], 'from vote helper', flush=True)
             # print(center.shape, transformer_xyz.shape)
@@ -80,7 +81,9 @@ class ProposalModule(nn.Module):
         super().__init__()
         print(config_transformer, '<< config transformer ')
         transformer_type = config_transformer.get('transformer_type', 'enc_dec')
+        position_type = config_transformer.get('position_type', 'vote')
         self.transformer_type = transformer_type
+        self.position_type = position_type
         self.center_with_bias = 'dec' not in transformer_type
 
         self.num_class = num_class
@@ -140,6 +143,7 @@ class ProposalModule(nn.Module):
             raise NotImplementedError('Unknown sampling strategy: %s. Exiting!' % (self.sampling))
         
         end_points['aggregated_vote_xyz'] = xyz  # (batch_size, num_proposal, 3)
+        end_points['aggregated_vote_features'] = features.permute(0, 2, 1).contiguous() # (batch_size, num_proposal, 128)
         end_points['aggregated_vote_inds'] = sample_inds  # (batch_size, num_proposal,) # should be 0,1,2,...,num_proposal
 
         # --------- PROPOSAL GENERATION ----------  TODO PROPOSAL GENERATION AND CHANGE LOSS GENERATION
@@ -156,8 +160,15 @@ class ProposalModule(nn.Module):
         features = features.permute(0, 2, 1)
         # print(xyz.shape, features.shape, '<< detr input feature dim')
         # output_dict = self.detr(torch.cat([xyz, _xyz], dim=-1), features, end_points)
-        output_dict = self.detr(xyz, features, end_points)
-        # print('??  output dict done')
+        if self.position_type == 'vote':
+            output_dict = self.detr(xyz, features, end_points)
+        else:
+            # print(xyz.shape, features.shape, initial_xyz.shape, '<<< initial position shape', flush=True)
+            # chosen_xyz = torch.gather(end_points['vote_xyz'], 1, sample_inds.unsqueeze(-1).repeat(1, 1, 3).long())
+            # print(chosen_xyz[0, :5], xyz[0, :5])
+            chosen_xyz = torch.gather(initial_xyz, 1, sample_inds.unsqueeze(-1).repeat(1, 1, 3).to(initial_xyz.device).long())
+            output_dict = self.detr(chosen_xyz, features, end_points)
+        # output_dict = self.detr(xyz, features, end_points)
         end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr, self.center_with_bias)
 
         return end_points

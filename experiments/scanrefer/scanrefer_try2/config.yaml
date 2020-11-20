@@ -1,0 +1,66 @@
+common:
+    model:
+        name: scanrefer
+        votenet_config:
+            name: votenet
+            task_type: Scannetv2
+            net_type: votenet
+            num_target: 256
+            num_input_channel: 4
+            vote_factor: 1
+            cluster_sampling: vote_fps
+            loss_type: NMS # NMS
+        refer_config:
+            name: 2stage
+    logs:
+        base_logger:
+            path: log/log.txt
+        tensorboard_logger:
+            path: log
+    snapshot:
+        save_path: snapshot
+    load:
+        load: False
+        path: ./ckpt_best_model.pth.tar
+        type: recover
+train:
+    batch_size: 8
+    workers: 4
+    dataset:
+        name: Scanrefer
+        split: train
+        args:
+            augment: True
+            num_points: 20000
+            use_color: True
+            # use_height: True  # use it as feature
+    optimizer:
+        name: AdamW
+        betas: [0.9, 0.999]
+        eps: 0.00000001
+        weight_decay: 0.0001
+    lr_scheduler:
+        type: cosine
+        T_max: 150000
+        base_lr: 0.001
+        eta_min: 0.0001
+    transform: None # TODO
+    runner:
+        name: iteration
+        max_iter: 150000
+        # test and save
+        test_freq: 30000
+        save_freq: 150000
+        log_freq: 10
+        snapshot_save_path: snapshot
+test:
+    batch_size: 8
+    workers: 4
+    dataset:
+        valset:
+            name: Scanrefer
+            split: val
+            args:
+                augment: False
+                num_points: 20000
+                use_color: True

@@ -87,7 +87,7 @@ def iterRunner(info):
         output['mean_time_iter'] = (t_tmp - T_START) / (iter_id - last_iter)
         t_start = t_tmp
         output['lr'] = lr_scheduler.get_lr()[0]
-        if iter_id % config.test_freq == 0 or iter_id % config.save_freq == 0:
+        if iter_id != -1 and (iter_id % config.test_freq == 0 or iter_id % config.save_freq == 0):
             if isinstance(model, torch.nn.DataParallel):
                 model.module.val_mode()
             elif isinstance(model, torch.nn.Module):

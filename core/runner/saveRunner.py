@@ -20,7 +20,8 @@ def saveRunner(info):
     assert hasattr(model, 'save_dataset'), 'you should save dataset in model'
     for testset_name, loader in info['testdataloaders'].items():
         if 'save' not in testset_name:
-            continue
+            print('Warning! saving a dataset without \'save\' in name')
+            # continue
         model.save_dataset(loader, loggers)
         print('Testing Dataset: use %.5fs' % (time.time() - t_start))
         t_start = time.time()

@@ -18,6 +18,8 @@ dataset_dict = {
     'SemanticKITTIAUGDataset': 'SementicDataset.SemanticKITTIAUG.SemanticKITTIDataset',
     'Scannetv2': 'Detection3D.scannet.scannet_detection_dataset.ScannetDetectionDataset',
     'Sunrgbd': 'Detection3D.sunrgbd.sunrgbd_detection_dataset.SunrgbdDetectionVotesDataset',
+    # 'Scanrefer': 'Detection3D.scanrefer.dataset.ScannetReferenceDataset',
+    'Scanrefer': 'Detection3D.scanrefer.dataset.GetScanReferDataset',
 }
 
 
