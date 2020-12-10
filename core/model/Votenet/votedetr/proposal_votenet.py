@@ -15,13 +15,13 @@ sys.path.append(os.path.join(ROOT_DIR, 'pointnet2'))
 sys.path.append(BASE_DIR)  # DETR
 
 from pointnet2_modules import PointnetSAModuleVotes
+from nn_distance import huber_loss
 import pointnet2_utils
 from detr3d import DETR3D
 
 
-def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr, center_with_bias=False):  # TODO CHANGE IT
+def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr, center_with_bias=False, quality_channel=False):  # TODO CHANGE IT
     # net_transposed = net.transpose(2, 1)
-    # TODO CHANGE OUTPUT_DICT
     pred_logits = output_dict['pred_logits']
     pred_boxes = output_dict['pred_boxes']
     # print(pred_boxes, flush=True) # <<< ??? pred box outputs
@@ -36,8 +36,10 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     sem_cls_scores = pred_logits[:,:,2:2+num_class] # Bxnum_proposalx10
     end_points['sem_cls_scores'] = sem_cls_scores
 
-
-    assert pred_boxes.shape[-1] == 3+num_heading_bin*2+num_size_cluster*4, 'pred_boxes.shape wrong'
+    bbox_args_shape = 3+num_heading_bin*2+num_size_cluster*4
+    if quality_channel:
+        bbox_args_shape += 1
+    assert pred_boxes.shape[-1] == bbox_args_shape, 'pred_boxes.shape wrong'
     center = pred_boxes[:,:,0:3] # (batch_size, num_proposal, 3) TODO RESIDUAL
     if center_with_bias:
         # print('CENTER ADDING VOTE-XYZ', flush=True)
@@ -71,15 +73,55 @@ def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size
     mean_size = torch.from_numpy(mean_size_arr.astype(np.float32)).type_as(pred_boxes).unsqueeze(0).unsqueeze(0)
     end_points['size_residuals'] = size_residuals_normalized * mean_size
     # print(3+num_heading_bin*2+num_size_cluster*4, ' <<< bbox heading and size tensor shape')
+    if quality_channel:
+        end_points['quality_weight'] = pred_boxes[:,:,3+num_heading_bin*2+num_size_cluster*4] 
 
     return end_points
 
 
+def farthest_point_sample_with_weight(xyz, npoint, weight=None, already_chosen=None):
+    """
+    Input:
+        xyz: pointcloud data, [B, N, 3]
+        npoint: number of samples
+    Return:
+        centroids: sampled pointcloud index, [B, npoint]
+    """
+    device = xyz.device
+    B, N, C = xyz.shape
+    centroids = torch.zeros(B, npoint, dtype=torch.long).to(device)
+    distance = torch.ones(B, N).to(device) * 1e10
+    farthest = torch.randint(0, N, (B,), dtype=torch.long).to(device)
+    batch_indices = torch.arange(B, dtype=torch.long).to(device)
+    for i in range(npoint):
+        if already_chosen is not None and i < already_chosen.shape[-1]:  # assign label
+            farthest = already_chosen[:, i].long()
+        centroids[:, i] = farthest
+        centroid = xyz[batch_indices, farthest, :].view(B, 1, 3)
+        dist = torch.sum((xyz - centroid) ** 2, -1)
+        if weight is not None:
+            dist = dist * weight
+        mask = dist < distance
+        distance[mask] = dist[mask]
+        farthest = torch.max(distance, -1)[1]
+        # print(dist, farthest)
+        # print(farthest, '<< farthest dist')
+    return centroids
+
+
 class ProposalModule(nn.Module):
     def __init__(self, num_class, num_heading_bin, num_size_cluster, mean_size_arr, num_proposal, sampling,
-                 seed_feat_dim=256, config_transformer=None):
+                 seed_feat_dim=256, config_transformer=None, quality_channel=False):
         super().__init__()
         print(config_transformer, '<< config transformer ')
+        if 'voting_transformer' in config_transformer:
+            voting_transformer = config_transformer.voting_transformer
+            self.voting_transformer_config = voting_transformer
+            self.voting_transformer = DETR3D(voting_transformer, input_channels=seed_feat_dim, class_output_shape=0, bbox_output_shape=256)  # patch-move
+            seed_feat_dim = 256
+        else:
+            self.voting_transformer = None
+
         transformer_type = config_transformer.get('transformer_type', 'enc_dec')
         position_type = config_transformer.get('position_type', 'vote')
         self.transformer_type = transformer_type
@@ -93,6 +135,7 @@ class ProposalModule(nn.Module):
         self.num_proposal = num_proposal
         self.sampling = sampling
         self.seed_feat_dim = seed_feat_dim
+        self.quality_channel = quality_channel
 
         # Vote clustering
         self.vote_aggregation = PointnetSAModuleVotes(
@@ -112,7 +155,7 @@ class ProposalModule(nn.Module):
         self.bn1 = torch.nn.BatchNorm1d(128)
         self.bn2 = torch.nn.BatchNorm1d(128)
         # JUST FOR
-        self.detr = DETR3D(config_transformer, input_channels=128, class_output_shape=2+num_class, bbox_output_shape=3+num_heading_bin*2+num_size_cluster*4)
+        self.detr = DETR3D(config_transformer, input_channels=128, class_output_shape=2+num_class, bbox_output_shape=3+num_heading_bin*2+num_size_cluster*4+int(quality_channel))
 
     def forward(self, initial_xyz, xyz, features, end_points):  # initial_xyz and xyz(voted): just for encoding
         """
@@ -123,6 +166,25 @@ class ProposalModule(nn.Module):
             scores: (B,num_proposal,2+3+NH*2+NS*4) 
         """
         # print(initial_xyz, end_points['seed_xyz'], '<< TESTING', flush=True)
+        if self.voting_transformer is not None:
+            # print(xyz[:, :2, :], initial_xyz[:, :2, :], '<< input xyz', flush=True)
+            output_dict = self.voting_transformer(xyz, features.permute(0, 2, 1), end_points)
+            assert 'transformer_weighted_xyz' in output_dict.keys(), 'you should use transformer to move point position'
+            cascade_xyz = output_dict['transformer_weighted_xyz_all']  # todo may add weight
+            xyz = output_dict['transformer_weighted_xyz'].contiguous()
+            if self.voting_transformer_config.get('add', False):
+                # print('feature adding')
+                features = features + output_dict['pred_boxes'].permute(0, 2, 1).contiguous()
+            else:
+                features = output_dict['pred_boxes'].permute(0, 2, 1).contiguous()
+            # print(xyz[:, :3], initial_xyz[:, :3], '<< xyz', flush=True)
+            # voting fin value
+            end_points['vote_xyz'] = xyz
+            end_points['vote_features'] = features
+            end_points['vote_stage'] = 1
+            end_points['vote_xyz_stage_1'] = xyz
+            # xyz, features, fps_inds = self.vote_aggregation(xyz, features)
+            # sample_inds = fps_inds
         if self.sampling == 'vote_fps':
             # Farthest point sampling (FPS) on votes
             xyz, features, fps_inds = self.vote_aggregation(xyz, features)
@@ -138,6 +200,23 @@ class ProposalModule(nn.Module):
             num_seed = initial_xyz.shape[1]
             batch_size = initial_xyz.shape[0]
             sample_inds = torch.randint(0, num_seed, (batch_size, self.num_proposal), dtype=torch.int).cuda()
+            xyz, features, _ = self.vote_aggregation(xyz, features, sample_inds)
+        elif self.sampling == 'vote_dist_fps':
+            xyz_dist = huber_loss(xyz - initial_xyz, delta=1.0)
+            xyz_dist = torch.mean(xyz_dist, dim=-1)
+            # print(xyz_dist, flush=True)
+            # print(initial_xyz.shape, xyz.shape, '<< shape`:')
+            sorted_dist, sorted_ind = torch.sort(xyz_dist, dim=1, descending=True)
+            # print(sorted_dist[:, 127], '<< sorted dist dist')
+            dist_num_proposal = self.num_proposal // 2
+            ini_inds = pointnet2_utils.furthest_point_sample(initial_xyz, dist_num_proposal)
+            dist_weight = xyz_dist
+            dist_weight[dist_weight>0.1] = 0.1
+            # print(dist_weight, dist_weight.mean(dim=-1))
+            sample_inds = farthest_point_sample_with_weight(initial_xyz, self.num_proposal, dist_weight, ini_inds)
+            sample_inds = sample_inds.int()
+            # print(ini_inds, sample_inds, '<< fps inds')
+            # assert False
             xyz, features, _ = self.vote_aggregation(xyz, features, sample_inds)
         else:
             raise NotImplementedError('Unknown sampling strategy: %s. Exiting!' % (self.sampling))
@@ -169,7 +248,7 @@ class ProposalModule(nn.Module):
             chosen_xyz = torch.gather(initial_xyz, 1, sample_inds.unsqueeze(-1).repeat(1, 1, 3).to(initial_xyz.device).long())
             output_dict = self.detr(chosen_xyz, features, end_points)
         # output_dict = self.detr(xyz, features, end_points)
-        end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr, self.center_with_bias)
+        end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr, self.center_with_bias, quality_channel=self.quality_channel)
 
         return end_points
 

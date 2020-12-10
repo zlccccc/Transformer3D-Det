@@ -16,10 +16,10 @@ class PositionEmbeddingSine3D(nn.Module):
     """
     def __init__(self, num_pos_feats=64, temperature=10000, scale=None):
         super().__init__()
-        self.num_pos_feats = num_pos_feats - 1  # TODO concat with input dim
+        self.num_pos_feats = num_pos_feats # TODO concat with input dim
         self.temperature = temperature
         if scale is None:
-            scale = 2 * math.pi
+            scale = 2 * math.pi * 32
         self.scale = scale
 
     def forward(self, xyz):  # xyz: to be normalized
@@ -38,12 +38,18 @@ class PositionEmbeddingSine3D(nn.Module):
         xyz = xyz * self.scale
         dim_t = torch.arange(self.num_pos_feats, dtype=torch.float32, device=xyz.device)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
+        # print(dim_t, xyz, flush=True)
 
-        pos_dim = [xyz]
-        # pos_dim = []
+        # pos_dim = [xyz]
+        pos_dim = []
         for i in range(C):
             # print(xyz[:, :, i, None].shape, dim_t.shape)
-            pos_dim.append(xyz[:, :, i, None].repeat(1, 1, self.num_pos_feats) / dim_t)
+            pos_embd_dim = xyz[:, :, i, None].repeat(1, 1, self.num_pos_feats) / dim_t
+            pos_embd_dim = torch.cat((pos_embd_dim[:, :, 0::2].sin(), pos_embd_dim[:, :, 1::2].cos()), dim=-1)
+            # print(pos_embd_dim.shape, '<< pos embd shape', flush=True)
+            # print(pos_embd_dim, '<< pos embd dim')
+            # print(pos_embd_dim[0, 0, :], '<< pos embed', flush=True)
+            pos_dim.append(pos_embd_dim.contiguous())
         # pos_x = torch.stack((pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4).flatten(3)
         # pos_y = torch.stack((pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4).flatten(3)
         # pos = torch.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)

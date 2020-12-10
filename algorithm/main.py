@@ -46,6 +46,7 @@ def main():
         print('===============    use args --test    ===============')
         config.train.runner.name = 'test'
         config.common.load.load = True
+        config.common.load.type = 'test'
     elif args.recover:
         print('=============    use args --recover    ==============')
         assert not args.test  # must
@@ -121,7 +122,7 @@ def main():
         if load_way == 'recover':
             print('Resume training from a previous checkpoint ...')
             lowest_err, last_iter = load_state(load_path, model, optimizer=optimizer)
-        elif load_way == 'finetune':
+        elif load_way in ['finetune', 'test']:
             print('Finetuning from a previous model ...')
             load_state(load_path, model)
         else:

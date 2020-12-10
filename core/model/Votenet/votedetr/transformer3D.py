@@ -72,6 +72,9 @@ class Transformer3D(nn.Module):
         if self.attention_type.split(';')[-1] == 'deformable':
             assert query_embed is None, 'deformable: query embedding should be None'
             query_embed = torch.zeros_like(src)
+            if pos_embed is not None:
+                query_embed = pos_embed
+                # print(query_embed, '>>query embed', flush=True)
             tgt = src
             tgt_mask = src_mask
             # print(query_embed.shape, '<<< query embedding shape', flush=True)
@@ -177,7 +180,7 @@ def attn_with_batch_mask(layer_attn, q, k, src, src_mask, src_key_padding_mask):
         batch_attn = layer_attn(q[:, i:i+1, :], k[:, i:i+1, :], value=src[:, i:i+1, :], attn_mask=attn_mask,
                                     key_padding_mask=key_mask)
         # print(batch_attn[1].sum(dim=-1))  # TODO it is okay to make a weighted sum
-        # print(batch_attn[1], attn_mask)
+        # print(batch_attn[1], attn_mask, flush=True
         src_arr.append(batch_attn[0])
         attn_arr.append(batch_attn[1])
     src2 = torch.cat(src_arr, dim=1)
@@ -254,7 +257,8 @@ class TransformerEncoderLayer(nn.Module):
 class MultiheadPositionalAttention(nn.Module):  # nearby points
     def __init__(self, d_model, nhead, dropout, attn_type='nearby'):  # nearby; interpolation
         super().__init__()
-        assert attn_type in ['nearby', 'interpolation', 'interpolation_10', 'near_interpolation', 'input', 'interpolation_xyz', 'interpolation_xyz_0.1'], 'attn_type should be nearby|interpolation'
+        assert attn_type in ['nearby', 'interpolation', 'interpolation_10', 'near_interpolation', 'dist', 'dist_10',
+                             'input', 'interpolation_xyz', 'interpolation_xyz_0.1'], 'attn_type should be nearby|interpolation'
         self.attn_type = attn_type
         self.attention = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
     
@@ -299,6 +303,23 @@ class MultiheadPositionalAttention(nn.Module):  # nearby points
             # src_mask
             src_mask = torch.zeros(B, N, N).to(dist.device) - 1e9
             src_mask.scatter_(2, dist_pos, weight.exp())
+            ret = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
+                                       src_key_padding_mask=key_padding_mask)
+            return ret
+        elif self.attn_type in ['dist', 'dist_10']:  # similiar as pointnet
+            assert attn_mask is None, 'positional attn: mask should be none'
+            # dist_recip = 1 / (dist + 1e-8)
+            # norm = torch.sum(dist_recip, dim=1, keepdim=True)
+            # weight = dist_recip / norm
+            # print(norm.shape, weight.shape)
+            near_kth = 5
+            kth_split = self.attn_type.split('_')
+            if len(kth_split) == 2:
+                near_kth = int(kth_split[-1])
+            dist_min, dist_pos = torch.topk(dist, k=near_kth, dim=-1, largest=False, sorted=False)
+            # weight
+            src_mask = torch.zeros(B, N, N).to(dist.device) - 1e9
+            src_mask.scatter_(2, dist_pos, -dist_min)
             ret = attn_with_batch_mask(self.attention, query, key, src=value, src_mask=src_mask,
                                        src_key_padding_mask=key_padding_mask)
             return ret

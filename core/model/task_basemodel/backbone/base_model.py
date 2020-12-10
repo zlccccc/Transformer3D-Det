@@ -126,7 +126,11 @@ class base_module(nn.Module):
             if not param.requires_grad:
                 continue
             for key in weight_dict.keys():
-                if key in name:
+                keys, keys_in_name = key.split(';'), True
+                for k in keys:
+                    if k not in name:
+                        keys_in_name = False
+                if keys_in_name:
                     result_key = key
                     break
             # print(result_key, name, ' DEBUG<<< name and result key!!!')

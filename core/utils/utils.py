@@ -43,6 +43,7 @@ def load_state(path, model, map_location='cpu', optimizer=None):  # directly to 
 
         lowest_error = checkpoint['lowest_error']
         step = checkpoint['step']
+        print('load_state: checkpoint step', step, flush=True)
 
         if optimizer is not None:
             optimizer.load_state_dict(checkpoint['optimizer'])

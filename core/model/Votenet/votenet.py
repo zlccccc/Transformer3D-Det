@@ -64,7 +64,8 @@ class votenet(base_module):
                                 vote_factor=config.vote_factor,
                                 sampling=config.cluster_sampling,
                                 config_backbone=config.get('backbone', None),
-                                config_transformer=config.transformer)
+                                config_transformer=config.transformer,
+                                quality_channel=config.get('quality_channel', False))
             if config.loss_type == 'NMS':
                 from .models.votenet import get_loss
             elif config.loss_type == 'decoder_NMS':
@@ -172,6 +173,9 @@ class votenet(base_module):
         print('Eval-----AR@0.50', metrics_dict_50['AR'])
         for key in metrics_dict_25:
             print('eval %s: %f' % (key, metrics_dict_25[key]), flush=True)
+        print(' ---- metrics_0.50 ---- ')
+        for key in metrics_dict_50:
+            print('eval %s: %f' % (key, metrics_dict_50[key]), flush=True)
         return output
 
 

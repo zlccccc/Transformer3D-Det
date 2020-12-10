@@ -27,6 +27,8 @@ def box_p2c(x):
 
 # modified from torchvision to also return the union
 def box_iou(boxes1, boxes2):
+    assert (boxes1[:, 3:] >= boxes1[:, :3]).all()
+    assert (boxes2[:, 3:] >= boxes2[:, :3]).all()
     area1 = box_area(boxes1)
     area2 = box_area(boxes2)
     assert(boxes1.shape == boxes2.shape)
@@ -69,5 +71,7 @@ def generalized_box_iou(boxes1, boxes2):
 def iou_loss(gt, pred, type='giou'):
     if type == 'giou':
         return generalized_box_iou(gt, pred)
+    elif type == 'iou':
+        return box_iou(gt, pred)[0]
     else:
         raise NotImplementedError(type)
