@@ -13,7 +13,7 @@ import sys
 # ROOT_DIR = os.path.dirname(BASE_DIR)
 # sys.path.append(BASE_DIR)
 
-from transformer3D import build_transformer
+from transformer3D import build_transformer, MLP
 from position_encoding import build_position_encoding
 # from .transformer3D import build_transformer
 
@@ -36,12 +36,17 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         if 'dec' in transformer_type:
             num_queries = config_transformer.num_queries
             self.num_queries = num_queries
+        # seed_attention: Center; SizeType; Direction; Offset
+        self.seed_attention = config_transformer.get('seed_attention', False)
+        if self.seed_attention:
+            config_transformer.offset_size = bbox_output_shape
+
         self.transformer = build_transformer(config_transformer)
         hidden_dim = self.transformer.d_model
         self.input_proj = nn.Linear(input_channels, hidden_dim)
 
         self.class_embed = nn.Linear(hidden_dim, class_output_shape)
-        self.bbox_embed = MLP(hidden_dim, hidden_dim, bbox_output_shape, 3)
+        self.bbox_embed = MLP(hidden_dim, hidden_dim, bbox_output_shape, 3)  # TODO Change MLP LN
 
         if 'dec' in transformer_type:
             self.query_embed = nn.Embedding(num_queries, hidden_dim)
@@ -54,13 +59,17 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         self.weighted_input = config_transformer.get('weighted_input', False)
         if self.weighted_input:
             print('[INFO!] Use Weighted Input!')
+        if self.seed_attention:
+            self.seed_proj = nn.Linear(input_channels, hidden_dim)
+            print('[INFO!] Use Seed Attention!')
+
         if self.pos_embd_type in ['self', 'none']:
             self.pos_embd = None
         else:
             self.pos_embd = build_position_encoding(config_transformer.position_embedding, hidden_dim, config_transformer.input_dim)
         self.aux_loss = aux_loss
 
-    def forward(self, xyz, features, output):  # insert into output
+    def forward(self, xyz, features, output, seed_xyz=None, seed_features=None, decode_vars=None):  # insert into output
         """ The forward expects a Dict, which consists of:
                - input.xyz: [batch_size x N x K]
                - input.features: [batch_size x N x C]
@@ -79,6 +88,8 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         _, _, C = features.shape
         # maybe detr_mask is equal to None mask
         # import ipdb; ipdb.set_trace()
+        # GET MASK
+
         if self.mask_type == 'detr_mask':
             mask = torch.zeros(B, N).bool().to(xyz.device)
             src_mask = None
@@ -101,21 +112,32 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         else:
             raise NotImplementedError(self.mask_type)
         # print(mask, ' <<< mask')
+        seed_embd = None
         if self.pos_embd_type == 'self':
             pos_embd = self.input_proj(features)
         elif self.pos_embd_type == 'none':
             pos_embd = None
         else:
             pos_embd = self.pos_embd(xyz)
+            if seed_xyz is not None:
+                seed_embd = self.pos_embd(seed_xyz)
         # print(xyz, features, '<< before transformer; features not right')
         features = self.input_proj(features)
         # print(features.shape, features.mean(), features.std(), '<< features std and mean')
         query_embd_weight = self.query_embed.weight if self.query_embed is not None else None
 
-        if self.weighted_input:  #TODO doit
-            value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask, src_position=xyz)
+        if self.seed_attention: # TODO doit
+            assert seed_xyz is not None
+            assert seed_features is not None
+            seed_features = self.seed_proj(seed_features)
+            value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask, src_position=xyz, seed_position=seed_xyz, seed_feat=seed_features, seed_embed=seed_embd, decode_vars=decode_vars)
         else:
-            value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask)
+            assert seed_xyz is None
+            assert seed_features is None
+            if self.weighted_input:  #TODO doit
+                value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask, src_position=xyz)
+            else:
+                value = self.transformer(features, mask, query_embd_weight, pos_embd, src_mask=src_mask)
 
         # return: dec_layer * B * Query * C
         if 'dec' in self.transformer_type or self.transformer_type.split(';')[-1] == 'deformable':
@@ -124,7 +146,6 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
             hs = value
         else:
             raise NotImplementedError(self.transformer_type)
-        # print(hs,'<<after transformer', flush=True) # TODO CHECK IT
         outputs_class = self.class_embed(hs)
         outputs_coord = self.bbox_embed(hs)
         # outputs_coord = outputs_coord.sigmoid()
@@ -134,14 +155,15 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
             if self.aux_loss:
                 output['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
 
-            if self.weighted_input: # sum with attention weight (just for output!)
+            if self.weighted_input or self.seed_attention: # sum with attention weight (just for output!)
                 weighted_xyz = value[2]  # just weighted
                 # print(weighted_xyz.shape, '<<< weighted xyz value!', flush=True)  # update: it is right!
                 output['transformer_weighted_xyz_all'] = weighted_xyz
                 output['transformer_weighted_xyz'] = weighted_xyz[-1]  # just sum it
+            else:
+                assert len(value) == 2
         else:
             output = {'pred_logits': outputs_class, 'pred_boxes': outputs_coord}  # final
-            
         return output
 
     # @torch.jit.unused
@@ -151,21 +173,6 @@ class DETR3D(nn.Module):  # just as a backbone; encoding afterward
         # as a dict having both a Tensor and a list.
         return [{'pred_logits': a, 'pred_boxes': b}
                 for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
-
-
-class MLP(nn.Module):
-    """ Very simple multi-layer perceptron (also called FFN)"""
-
-    def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
-        super().__init__()
-        self.num_layers = num_layers
-        h = [hidden_dim] * (num_layers - 1)
-        self.layers = nn.ModuleList(nn.Linear(n, k) for n, k in zip([input_dim] + h, h + [output_dim]))
-
-    def forward(self, x):
-        for i, layer in enumerate(self.layers):
-            x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
-        return x
 
 
 if __name__ == "__main__":

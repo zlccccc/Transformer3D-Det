@@ -44,7 +44,7 @@ def pc_nn_distance(pc1, pc2, l1smooth=False, delta=1.0, l1=False):  # this func 
     # print(pc1_expand_tile.shape, pc2_expand_tile.shape, '<< pc shape final')
     pc_diff = pc1_expand_tile - pc2_expand_tile
     if l1smooth:
-        pc_dist = torch.sum(huber_loss(pc_diff, delta), dim=-1)  # (B,N,M)  # TODO it is not right(l1 should be sqrt)
+        pc_dist = torch.sum(huber_loss(pc_diff, delta), dim=-1)  # (B,N,M)  # there is a small bug (l1 should be sqrt)
     elif l1:
         pc_dist = torch.sum(torch.abs(pc_diff), dim=-1)  # (B,N,M)
     else:

@@ -23,7 +23,7 @@ def saveRunner(info):
             print('Warning! saving a dataset without \'save\' in name')
             # continue
         model.save_dataset(loader, loggers)
-        print('Testing Dataset: use %.5fs' % (time.time() - t_start))
+        print('Testing Dataset: use %.5f s' % (time.time() - t_start))
         t_start = time.time()
     # for logger
     print('testing: done')

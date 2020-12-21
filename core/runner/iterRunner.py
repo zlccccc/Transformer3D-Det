@@ -69,7 +69,7 @@ def iterRunner(info):
         loss.backward()
         if clip_grad_norm is not None:
             torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad_norm)
-            # print('clip_max_norm', flush=True)
+            # print('clip_max_norm', clip_grad_norm, flush=True)
             pass
         # model.average_gradients()  # multi card sync
         # print_grad(model, 'weight')

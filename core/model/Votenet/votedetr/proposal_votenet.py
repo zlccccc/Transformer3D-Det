@@ -18,64 +18,23 @@ from pointnet2_modules import PointnetSAModuleVotes
 from nn_distance import huber_loss
 import pointnet2_utils
 from detr3d import DETR3D
+from transformer3D import decode_scores_boxes
 
 
-def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr, center_with_bias=False, quality_channel=False):  # TODO CHANGE IT
-    # net_transposed = net.transpose(2, 1)
+def decode_scores_classes(output_dict, end_points, num_class):
     pred_logits = output_dict['pred_logits']
-    pred_boxes = output_dict['pred_boxes']
-    # print(pred_boxes, flush=True) # <<< ??? pred box outputs
-    # print(pred_logits.shape, pred_boxes.shape, '<< decode shape score')
-
-    batch_size = pred_boxes.shape[0]
-    num_proposal = pred_boxes.shape[1]
-
     assert pred_logits.shape[-1] == 2+num_class, 'pred_logits.shape wrong'
     objectness_scores = pred_logits[:,:,0:2]  # TODO CHANGE IT; JUST SOFTMAXd
     end_points['objectness_scores'] = objectness_scores
     sem_cls_scores = pred_logits[:,:,2:2+num_class] # Bxnum_proposalx10
     end_points['sem_cls_scores'] = sem_cls_scores
+    return end_points
 
-    bbox_args_shape = 3+num_heading_bin*2+num_size_cluster*4
-    if quality_channel:
-        bbox_args_shape += 1
-    assert pred_boxes.shape[-1] == bbox_args_shape, 'pred_boxes.shape wrong'
-    center = pred_boxes[:,:,0:3] # (batch_size, num_proposal, 3) TODO RESIDUAL
-    if center_with_bias:
-        # print('CENTER ADDING VOTE-XYZ', flush=True)
-        base_xyz = end_points['aggregated_vote_xyz'] # (batch_size, num_proposal, 3)
-        # print('Using Center With Bias', output_dict.keys())
-        if 'transformer_weighted_xyz' in output_dict.keys():
-            end_points['transformer_weighted_xyz_all'] = output_dict['transformer_weighted_xyz_all']  # just for visualization
-            transformer_xyz = output_dict['transformer_weighted_xyz']
-            # print(transformer_xyz[0, :4], base_xyz[0, :4], 'from vote helper', flush=True)
-            # print(center.shape, transformer_xyz.shape)
-            center = center + transformer_xyz
-        else:
-            center = center + base_xyz  # residual
-    else:
-        raise NotImplementedError('center without bias(for decoder): not Implemented')
-    end_points['center'] = center
 
-    heading_scores = pred_boxes[:,:,3:3+num_heading_bin]  # theta; todo change it
-    heading_residuals_normalized = pred_boxes[:,:,3+num_heading_bin:3+num_heading_bin*2]
-    end_points['heading_scores'] = heading_scores # Bxnum_proposalxnum_heading_bin
-    end_points['heading_residuals_normalized'] = heading_residuals_normalized # Bxnum_proposalxnum_heading_bin (should be -1 to 1)
-    end_points['heading_residuals'] = heading_residuals_normalized * (np.pi/num_heading_bin) # Bxnum_proposalxnum_heading_bin
-
-    size_scores = pred_boxes[:,:,3+num_heading_bin*2:3+num_heading_bin*2+num_size_cluster]
-    size_residuals_normalized = pred_boxes[:,:,3+num_heading_bin*2+num_size_cluster:3+num_heading_bin*2+num_size_cluster*4].view([batch_size, num_proposal, num_size_cluster, 3]) # Bxnum_proposalxnum_size_clusterx3 TODO REMOVE BBOX-SIZE-DEFINED
-    # size_residuals_normalized = size_residuals_normalized.sigmoid() * 2 - 1
-    # size_residuals_normalized = size_residuals_normalized.atan() / math.pi  # -0.5 to 0.5
-    # print('size normalized value max and min', size_residuals_normalized.max(), size_residuals_normalized.min(), size_residuals_normalized.std(), flush=True)
-    end_points['size_scores'] = size_scores
-    end_points['size_residuals_normalized'] = size_residuals_normalized
-    mean_size = torch.from_numpy(mean_size_arr.astype(np.float32)).type_as(pred_boxes).unsqueeze(0).unsqueeze(0)
-    end_points['size_residuals'] = size_residuals_normalized * mean_size
-    # print(3+num_heading_bin*2+num_size_cluster*4, ' <<< bbox heading and size tensor shape')
-    if quality_channel:
-        end_points['quality_weight'] = pred_boxes[:,:,3+num_heading_bin*2+num_size_cluster*4] 
-
+# TODO: You Should Check It!
+def decode_scores(output_dict, end_points,  num_class, num_heading_bin, num_size_cluster, mean_size_arr, center_with_bias=False, quality_channel=False):
+    end_points = decode_scores_classes(output_dict, end_points, num_class)
+    end_points = decode_scores_boxes(output_dict, end_points, num_heading_bin, num_size_cluster, mean_size_arr, center_with_bias, quality_channel)
     return end_points
 
 
@@ -155,6 +114,14 @@ class ProposalModule(nn.Module):
         self.bn1 = torch.nn.BatchNorm1d(128)
         self.bn2 = torch.nn.BatchNorm1d(128)
         # JUST FOR
+
+        if self.position_type == 'seed_attention':
+            self.seed_feature_trans = torch.nn.Sequential(
+                torch.nn.Conv1d(256, 128, 1),
+                torch.nn.BatchNorm1d(128),
+                torch.nn.PReLU(128)
+            )
+
         self.detr = DETR3D(config_transformer, input_channels=128, class_output_shape=2+num_class, bbox_output_shape=3+num_heading_bin*2+num_size_cluster*4+int(quality_channel))
 
     def forward(self, initial_xyz, xyz, features, end_points):  # initial_xyz and xyz(voted): just for encoding
@@ -166,6 +133,7 @@ class ProposalModule(nn.Module):
             scores: (B,num_proposal,2+3+NH*2+NS*4) 
         """
         # print(initial_xyz, end_points['seed_xyz'], '<< TESTING', flush=True)
+        seed_xyz, seed_features = initial_xyz, features
         if self.voting_transformer is not None:
             # print(xyz[:, :2, :], initial_xyz[:, :2, :], '<< input xyz', flush=True)
             output_dict = self.voting_transformer(xyz, features.permute(0, 2, 1), end_points)
@@ -220,7 +188,7 @@ class ProposalModule(nn.Module):
             xyz, features, _ = self.vote_aggregation(xyz, features, sample_inds)
         else:
             raise NotImplementedError('Unknown sampling strategy: %s. Exiting!' % (self.sampling))
-        
+
         end_points['aggregated_vote_xyz'] = xyz  # (batch_size, num_proposal, 3)
         end_points['aggregated_vote_features'] = features.permute(0, 2, 1).contiguous() # (batch_size, num_proposal, 128)
         end_points['aggregated_vote_inds'] = sample_inds  # (batch_size, num_proposal,) # should be 0,1,2,...,num_proposal
@@ -241,15 +209,35 @@ class ProposalModule(nn.Module):
         # output_dict = self.detr(torch.cat([xyz, _xyz], dim=-1), features, end_points)
         if self.position_type == 'vote':
             output_dict = self.detr(xyz, features, end_points)
-        else:
+        elif self.position_type == 'seed':
             # print(xyz.shape, features.shape, initial_xyz.shape, '<<< initial position shape', flush=True)
             # chosen_xyz = torch.gather(end_points['vote_xyz'], 1, sample_inds.unsqueeze(-1).repeat(1, 1, 3).long())
             # print(chosen_xyz[0, :5], xyz[0, :5])
             chosen_xyz = torch.gather(initial_xyz, 1, sample_inds.unsqueeze(-1).repeat(1, 1, 3).to(initial_xyz.device).long())
             output_dict = self.detr(chosen_xyz, features, end_points)
+        elif self.position_type == 'seed_attention':
+            decode_vars = {
+                'num_class': self.num_class, 
+                'num_heading_bin': self.num_heading_bin,
+                'num_size_cluster': self.num_size_cluster, 
+                'mean_size_arr': self.mean_size_arr,
+                'aggregated_vote_xyz': xyz
+            }
+            seed_features = self.seed_feature_trans(seed_features)
+            seed_features = seed_features.permute(0, 2, 1).contiguous()
+            output_dict = self.detr(xyz, features, end_points, seed_xyz=seed_xyz, seed_features=seed_features, decode_vars=decode_vars)
+        else:
+            raise NotImplementedError(self.position_type)
         # output_dict = self.detr(xyz, features, end_points)
         end_points = decode_scores(output_dict, end_points, self.num_class, self.num_heading_bin, self.num_size_cluster, self.mean_size_arr, self.center_with_bias, quality_channel=self.quality_channel)
 
+        # import ipdb
+        # print(end_points['center'][1, :5], '<<< center')
+        # print(output_dict['transformer_weighted_xyz'][1,:5,:5], '<<< transformer weighted xyz')
+        # print(output_dict['transformer_weighted_xyz_all'][:,1,:5,:5], '<< cascade weighted xyz')
+        # print(output_dict['pred_boxes'][1,:5,:5])
+        # print(xyz[1,:5])
+        # ipdb.set_trace()
         return end_points
 
 

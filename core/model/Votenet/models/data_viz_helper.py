@@ -32,5 +32,6 @@ def save_obj(input_folder, scene_name, output_folder):
     pc_util.write_ply_color(scene_points, semantic_labels, os.path.join(output_folder, '%s_scene_semantic.obj' % scene_name))
 
     print('save obj at', output_folder)
-    print(instance_bboxes.shape)
+    print(instance_bboxes.shape, '<< instance boxes.shape')
     # input()
+    return instance_bboxes.shape[0]
