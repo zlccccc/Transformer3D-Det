@@ -4,6 +4,8 @@
 
 T-CSVT 2021；Submitted in 2020.12, Accepted in 2021.7
 
+Paper: [IEEE Xplore](https://ieeexplore.ieee.org/abstract/document/9504551/)
+
 Video: [Bilibili](https://www.bilibili.com/video/BV19q4y127zx?spm_id_from=333.337.search-card.all.click)
 
 ![](https://github.com/zlccccc/Transformer3D-Det-zlc-3d-training-codes/blob/master/pictures/image-20220405161350191.png)
@@ -18,11 +20,11 @@ Voting-based methods (e.g., VoteNet) have achieved promising results for 3D obje
 
 
 
-##### Install：
+## Install：
 
 Follow VoteNet to install the pointnet++ toolkit and download the dataset. [link](https://github.com/facebookresearch/votenet)
 
-##### run：
+## run：
 
 cd experiments/Transformer3DDet/ScanNet
 
@@ -33,8 +35,25 @@ cd experiments/Transformer3DDet/ScanNet
 sh train.sh
 
 
+## Citation
+```
 
-#### ZLC 3D Training Codes
+@article{zhao2021transformer3d,
+  title={Transformer3D-Det: Improving 3D object detection by vote refinement},
+  author={Zhao, Lichen and Guo, Jinyang and Xu, Dong and Sheng, Lu},
+  journal={IEEE Transactions on Circuits and Systems for Video Technology},
+  volume={31},
+  number={12},
+  pages={4735--4746},
+  year={2021},
+  publisher={IEEE}
+}
+
+```
+
+
+
+## More About this Codebase: (ZLC 3D Training Codes)
 
 ------
 
