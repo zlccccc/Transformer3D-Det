@@ -56,7 +56,7 @@ sh train.sh
 
 ------
 
-This code was written in the first year of my master's degree. This codebase supports a variety of 3D model training, such as RandLA-Net, PointNet, PointNet++, etc., including many previous attempts, such as HRNet + Pointnet, etc.; however, because it supports too many things and maintenance is very complex, it has been shelved for more than a year.
+This code was written in the first year of my master's degree. This codebase supports a variety of 3D model training, such as RandLA-Net, PointNet, PointNet++, etc., including many previous attempts, such as HRNet + Pointnet, etc. However, because it supports too many things and the maintenance is very complex, it has been shelved for more than a year.
 
 这套代码是我硕士一年级刚入学的时候写的，可以支持多种模型训练，如RandLA-Net，PointNet，可以做分类、语义分割、检测等等，包括了很多很多之前的尝试，如HRNet+PointNet等；但是由于它支持的东西太多，维护修改都非常复杂，所以后面的工作都是基于别人的codebase了。但是由于已有的代码迁移也很麻烦，之前的工作就只能先放这里了，希望大家能够谅解
 
