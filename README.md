@@ -6,11 +6,11 @@ T-CSVT 2021；Submitted in 2020.12, Accepted in 2021.7
 
 Video: [Bilibili](https://www.bilibili.com/video/BV19q4y127zx?spm_id_from=333.337.search-card.all.click)
 
-![image-20220405161350191](pictures\image-20220405161350191.png)
+![](https://github.com/zlccccc/Transformer3D-Det-zlc-3d-training-codes/blob/master/pictures/image-20220405161350191.png)
 
-![image-20220405161428765](pictures\image-20220405161428765.png)
+![](https://github.com/zlccccc/Transformer3D-Det-zlc-3d-training-codes/blob/master/pictures/image-20220405161428765.png)
 
-![image-20220405161453208](pictures\image-20220405161453208.png)
+![](https://github.com/zlccccc/Transformer3D-Det-zlc-3d-training-codes/blob/master/pictures/image-20220405161453208.png)
 
 
 
