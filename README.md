@@ -1,12 +1,12 @@
 ## Transformer3D-Det: Improving 3D Object Detection by Vote Refinement
 
-------
-
 T-CSVT 2021；Submitted in 2020.12, Accepted in 2021.7
 
 Paper: [IEEE Xplore](https://ieeexplore.ieee.org/abstract/document/9504551/)
 
 Video: [Bilibili](https://www.bilibili.com/video/BV19q4y127zx?spm_id_from=333.337.search-card.all.click)
+
+------
 
 ## Introduction
 
