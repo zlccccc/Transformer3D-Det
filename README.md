@@ -72,7 +72,7 @@ cd experiments/Transformer3DDet/ScanNet
 
 ​    *change Line30 and Line65 in config.yaml*
 
-​    *change Line2 in train.sh*
+​    *change Line2 in train.sh (remove spring.submit; use python ... only)*
 
 sh train.sh
 
